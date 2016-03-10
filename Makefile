@@ -15,6 +15,7 @@ $(EXECUTABLE): $(OBJECTS)
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
 
-test.s: test.bas
+test: test.bas
 	./basic < test.bas > test.s
+
 

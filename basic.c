@@ -7,7 +7,12 @@
 void prologue ();
 void epilogue ();
 
-char *	KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83";
+char *	KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84";
+
+#define IF   0x81
+#define ELSE 0x81
+#define LET  0x83
+#define GOTO -124
 
 int
 is_addop (char c)
@@ -173,8 +178,24 @@ Dump (char *s)
     fprintf(stderr, "\t%c\t$%hhx\t%d\n", *p, *p, *p);
 }
 
-char	Look;
+int Look;
+
+/* Gets a non-blank line from stdin. */
 void
+get_line (char *s, int size)
+{
+  static int line_number = 0;
+  do
+    {
+      s = fgets (s, size, stdin);
+      if (s == NULL)
+        exit (EXIT_SUCCESS);
+      fprintf (stderr, "%d: %s\n", ++line_number, s);
+    }
+  while (!strcspn (s, " \t\n"));
+}
+
+int
 GetChar ()
 {
   static char LineBuffer[80];
@@ -182,20 +203,14 @@ GetChar ()
   static int  LineLength = 0;
   if (!(LinePos < LineLength))
     {
-      if (fgets(LineBuffer, sizeof(LineBuffer)-1, stdin))
-        {
-          Tokenize(LineBuffer);
-          Dump(LineBuffer);
-          LineLength = strlen(LineBuffer);
-          LinePos = 0;
-        }
-      else
-        {
-          epilogue ();
-          exit(0);
-        }
+      get_line (LineBuffer, sizeof(LineBuffer)-1);
+      Tokenize(LineBuffer);
+      Dump(LineBuffer);
+      LineLength = strlen(LineBuffer);
+      LinePos = 0;
     }
   Look = LineBuffer[LinePos++];
+  return 1;
 }
 
 void
@@ -302,6 +317,14 @@ pop_div ()
   printf ("\tidiv\t%%rcx\n");
 }
 
+/* Multiply primary value by top of stack. */
+void
+pop_mul ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\timul\t%%rax, %%rdx\n");
+}
+
 /* Subtract primary from top of stack.  */
 void
 pop_sub ()
@@ -324,6 +347,13 @@ void
 allot (char *name)
 {
   printf ("\t.comm\t%s, 8\n", name);
+}
+
+/* Unconditional jump to label. */
+void
+jump (int line_number)
+{
+  printf ("\tjmp\tL%d\n", line_number);
 }
 
 
@@ -435,18 +465,44 @@ label ()
   printf ("L%d:\n", n);
 }
 
+/* Parse and translate a goto statement. */
+void
+goto_stmt ()
+{
+  int lineno;
+  match (GOTO);
+  lineno = get_number ();
+  jump (lineno);
+}
+
+/* Parse and translate an if statement. */
+void
+if_stmt ()
+{
+}
+
+/* Parse and translate a statement. */
+void
+statement ()
+{
+  if (isdigit (Look))
+    label ();
+  switch (Look)
+    {
+    case 0x81: if_stmt (); break;
+    case GOTO: goto_stmt (); break;
+    default: assignment (); break;
+    }
+  match ('\n');
+}
+
 /* Parse and translate a program.  */
 void
 program ()
 {
-  while (!feof (stdin))
+  while (Look != EOF)
     {
-      if (isdigit (Look))
-        {
-          label ();
-        }
-      assignment ();
-      match ('\n');
+      statement ();
     }
 }
 
@@ -472,14 +528,21 @@ epilogue ()
   printf ("\tret\n");
 }
 
+/* Initialize global structures. */
+void
+init ()
+{
+  GetChar ();
+  atexit (epilogue);
+}
+
 /* The main program. */
 int
 main(int argc, char *argv[])
 {
+  init ();
   prologue ();
-  GetChar();
   program();
-  fflush (stdout);
   return 0;
 }
 
