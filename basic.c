@@ -7,7 +7,7 @@
 void prologue ();
 void epilogue ();
 
-char *	KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84";
+char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84";
 
 #define IF   0x81
 #define ELSE 0x81
@@ -50,8 +50,8 @@ undefined (char *name)
   fprintf (stderr, "Undefined variable '%s'\n", name);
   exit (EXIT_FAILURE);
 }
-
 
+
 /* SYMBOL TABLE */
 
 struct symbol
@@ -76,17 +76,17 @@ lookup (char *name)
       allot (name);
       sp = calloc (1, sizeof (*sp));
       if (sp == NULL)
-        out_of_memory ();
-      sp->name = strdup (name); 
+	out_of_memory ();
+      sp->name = strdup (name);
       if (sp->name == NULL)
-        out_of_memory ();
+	out_of_memory ();
       sp->next = symbol_table;
       symbol_table = sp;
     }
   return sp;
 }
-
 
+
 
 /*
  * THE TOKENIZER
@@ -115,67 +115,74 @@ Tokenize (char *s)
   while (*s)
     {
       if (*s == ' ')
-        {
-          s++;
-        }
+	{
+	  s++;
+	}
       else if (*s == '"')
-        {
-          char c, t = *s;
-          *d = *s; ++d; ++s;
-          while (*s)
-            {
-              c = *s; *d = c;
-              ++d; ++s;
-              if (c == t)
-                break;
-            }
-        }
+	{
+	  char c, t = *s;
+	  *d = *s;
+	  ++d;
+	  ++s;
+	  while (*s)
+	    {
+	      c = *s;
+	      *d = c;
+	      ++d;
+	      ++s;
+	      if (c == t)
+		break;
+	    }
+	}
       else
-        {
-          char *k = KEYWORDS;
-          int iskey = 0;
-          /* While more keywords to search: */
-          while (*k)
-            {
-              int i = 0;
-              /* While not at end of string or keyword: */
-              while (s[i] && k[i] > 0)
-                {
-                  /* If input does not match keyword: */
-                  if (s[i] != k[i]) break;
-                    i++;
-                }
-              /* Keyword found? */
-              if (k[i] < 0)
-                {
-                  iskey = 1;
-                  /* Write keyword token. */
-                  *d++ = k[i];
-                  /* Skip over keyword. */
-                  s += i;
-                  break;
-                }
-              /* Next keyword. */
-              while (*k > 0) k++;
-              if (*k) k++;
-            }
-          /* If not keyword, copy character. */
-          if (!iskey)
-            {
-              *d++ = *s++;
-            }
-        } /* end if */
-    } /* end while */
+	{
+	  char *k = KEYWORDS;
+	  int iskey = 0;
+	  /* While more keywords to search: */
+	  while (*k)
+	    {
+	      int i = 0;
+	      /* While not at end of string or keyword: */
+	      while (s[i] && k[i] > 0)
+		{
+		  /* If input does not match keyword: */
+		  if (s[i] != k[i])
+		    break;
+		  i++;
+		}
+	      /* Keyword found? */
+	      if (k[i] < 0)
+		{
+		  iskey = 1;
+		  /* Write keyword token. */
+		  *d++ = k[i];
+		  /* Skip over keyword. */
+		  s += i;
+		  break;
+		}
+	      /* Next keyword. */
+	      while (*k > 0)
+		k++;
+	      if (*k)
+		k++;
+	    }
+	  /* If not keyword, copy character. */
+	  if (!iskey)
+	    {
+	      *d++ = *s++;
+	    }
+	}			/* end if */
+    }				/* end while */
   /* Null terminate tokenized string. */
-  *d='\0';
+  *d = '\0';
 }
 
 void
 Dump (char *s)
 {
   char *p;
-  for (p=s;*p;p++)
-    fprintf(stderr, "\t%c\t$%hhx\t%d\n", *p, *p, *p);
+  for (p = s; *p; p++)
+    fprintf (stderr, "\t%c\t$%hhx\t%d\n", *p, *p, *p);
 }
 
 int Look;
@@ -189,7 +196,7 @@ get_line (char *s, int size)
     {
       s = fgets (s, size, stdin);
       if (s == NULL)
-        exit (EXIT_SUCCESS);
+	exit (EXIT_SUCCESS);
       fprintf (stderr, "%d: %s\n", ++line_number, s);
     }
   while (!strcspn (s, " \t\n"));
@@ -199,14 +206,14 @@ int
 GetChar ()
 {
   static char LineBuffer[80];
-  static int  LinePos = 0;
-  static int  LineLength = 0;
+  static int LinePos = 0;
+  static int LineLength = 0;
   if (!(LinePos < LineLength))
     {
-      get_line (LineBuffer, sizeof(LineBuffer)-1);
-      Tokenize(LineBuffer);
-      Dump(LineBuffer);
-      LineLength = strlen(LineBuffer);
+      get_line (LineBuffer, sizeof (LineBuffer) - 1);
+      Tokenize (LineBuffer);
+      Dump (LineBuffer);
+      LineLength = strlen (LineBuffer);
       LinePos = 0;
     }
   Look = LineBuffer[LinePos++];
@@ -214,19 +221,21 @@ GetChar ()
 }
 
 void
-match(char c)
+match (char c)
 {
   if (Look != c)
     {
-      fprintf(stderr, "Expected %c\n", c);
-      exit(EXIT_FAILURE);
+      fprintf (stderr, "Expected %c\n", c);
+      exit (EXIT_FAILURE);
     }
-  GetChar();
+  GetChar ();
 }
 
-void	Expected(char *what) {
-	printf("Expected %s\n", what);
-	exit(EXIT_FAILURE);
+void
+Expected (char *what)
+{
+  printf ("Expected %s\n", what);
+  exit (EXIT_FAILURE);
 }
 
 char *
@@ -234,7 +243,8 @@ get_name ()
 {
   static char s[16];
   int i = 0;
-  if (!isalpha (Look)) syntax_error ();
+  if (!isalpha (Look))
+    syntax_error ();
   while (isalnum (Look))
     {
       s[i++] = Look;
@@ -248,7 +258,7 @@ char *
 get_var ()
 {
   char name[8];
-  int  len = 0;
+  int len = 0;
   if (!isalpha (Look))
     syntax_error ();
   while (isalnum (Look))
@@ -266,16 +276,17 @@ get_number ()
 {
   char s[16];
   char *p = s;
-  if (!isdigit(Look)) Expected("Integer");
-  while (isdigit(Look))
+  if (!isdigit (Look))
+    Expected ("Integer");
+  while (isdigit (Look))
     {
       *p++ = Look;
-      GetChar();
+      GetChar ();
     }
   return atoi (s);
 }
-
 
+
 /* CODE GENERATION */
 
 /* Load constant N into primary register. */
@@ -329,9 +340,9 @@ pop_mul ()
 void
 pop_sub ()
 {
-  printf("\tmov\t%%rdx, %%rax\n");
-  printf("\tpop\t%%rax\n");
-  printf("\tsub\t%%rax, %%rdx\n");
+  printf ("\tmov\t%%rdx, %%rax\n");
+  printf ("\tpop\t%%rax\n");
+  printf ("\tsub\t%%rax, %%rdx\n");
 }
 
 /* Add top of stack to primary.  */
@@ -341,7 +352,7 @@ pop_add ()
   printf ("\tpop\t%%rdx\n");
   printf ("\tadd\t%%rax, %%rdx\n");
 }
-  
+
 /* Allocate space for a variable. */
 void
 allot (char *name)
@@ -355,8 +366,8 @@ jump (int line_number)
 {
   printf ("\tjmp\tL%d\n", line_number);
 }
-
 
+
 /* PARSER */
 
 void add ();
@@ -371,8 +382,8 @@ void
 add ()
 {
   push ();
-  match('+');
-  term();
+  match ('+');
+  term ();
   pop_add ();
 }
 
@@ -380,8 +391,8 @@ void
 subtract ()
 {
   push ();
-  match('-');
-  term();
+  match ('-');
+  term ();
   pop_sub ();
 }
 
@@ -425,10 +436,14 @@ term ()
   while (is_mulop (Look))
     {
       switch (Look)
-        {
-          case '*': multiply (); break;
-          case '/': divide (); break;
-        }
+	{
+	case '*':
+	  multiply ();
+	  break;
+	case '/':
+	  divide ();
+	  break;
+	}
     }
 }
 
@@ -440,10 +455,14 @@ expression ()
   while (is_addop (Look))
     {
       switch (Look)
-        {
-          case '+': add (); break;
-          case '-': subtract (); break;
-        }
+	{
+	case '+':
+	  add ();
+	  break;
+	case '-':
+	  subtract ();
+	  break;
+	}
     }
 }
 
@@ -489,9 +508,15 @@ statement ()
     label ();
   switch (Look)
     {
-    case 0x81: if_stmt (); break;
-    case GOTO: goto_stmt (); break;
-    default: assignment (); break;
+    case 0x81:
+      if_stmt ();
+      break;
+    case GOTO:
+      goto_stmt ();
+      break;
+    default:
+      assignment ();
+      break;
     }
   match ('\n');
 }
@@ -538,11 +563,10 @@ init ()
 
 /* The main program. */
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
   init ();
   prologue ();
-  program();
+  program ();
   return 0;
 }
-
