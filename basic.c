@@ -9,21 +9,21 @@ void epilogue ();
 
 char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84";
 
-#define IF   0x81
-#define ELSE 0x81
-#define LET  0x83
+#define IF   -127
+#define ELSE -126
+#define LET  -125
 #define GOTO -124
 
 int
 is_addop (char c)
 {
-  return (c == '+' || c == '-');
+  return (c == '+' || c == '-' || c == '|');
 }
 
 int
 is_mulop (char c)
 {
-  return (c == '*' || c == '/');
+  return (c == '*' || c == '/' || c == '&');
 }
 
 /*
@@ -146,7 +146,7 @@ Tokenize (char *s)
 	      while (s[i] && k[i] > 0)
 		{
 		  /* If input does not match keyword: */
-		  if (s[i] != k[i])
+		  if (toupper (s[i]) != k[i])
 		    break;
 		  i++;
 		}
@@ -239,22 +239,6 @@ Expected (char *what)
 }
 
 char *
-get_name ()
-{
-  static char s[16];
-  int i = 0;
-  if (!isalpha (Look))
-    syntax_error ();
-  while (isalnum (Look))
-    {
-      s[i++] = Look;
-      GetChar ();
-    }
-  s[i] = '\0';
-  return s;
-}
-
-char *
 get_var ()
 {
   char name[8];
@@ -263,7 +247,7 @@ get_var ()
     syntax_error ();
   while (isalnum (Look))
     {
-      name[len++] = Look;
+      name[len++] = toupper (Look);
       GetChar ();
     }
   name[len] = '\0';
@@ -353,6 +337,22 @@ pop_add ()
   printf ("\tadd\t%%rax, %%rdx\n");
 }
 
+/* Logical AND top of stack with primary accumulator. */
+void
+pop_and ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tand\t%%rax, %%rdx\n");
+}
+
+/* Or top of stack with primary accumulator. */
+void
+pop_or ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tor\t%%rax, %%rdx\n");
+}
+
 /* Allocate space for a variable. */
 void
 allot (char *name)
@@ -366,6 +366,7 @@ jump (int line_number)
 {
   printf ("\tjmp\tL%d\n", line_number);
 }
+
 
 
 /* PARSER */
@@ -396,6 +397,15 @@ subtract ()
   pop_sub ();
 }
 
+void
+or ()
+{
+  push ();
+  match ('|');
+  term ();
+  pop_or ();
+}
+
 /* Parse and translate multiplication of two terms.  */
 void
 multiply ()
@@ -414,6 +424,16 @@ divide ()
   match ('/');
   factor ();
   pop_div ();
+}
+
+/* Parse and translate AND of two terms.  */
+void
+and ()
+{
+  push ();
+  match ('&');
+  factor ();
+  pop_and ();
 }
 
 /* Parse and translate a factor. */
@@ -443,6 +463,9 @@ term ()
 	case '/':
 	  divide ();
 	  break;
+        case '&':
+          and ();
+          break;
 	}
     }
 }
@@ -462,6 +485,9 @@ expression ()
 	case '-':
 	  subtract ();
 	  break;
+        case '|':
+          or ();
+          break;
 	}
     }
 }
@@ -470,6 +496,8 @@ expression ()
 void
 assignment ()
 {
+  if (Look == LET)
+    match (LET);
   char *var = get_var ();
   match ('=');
   expression ();
@@ -508,7 +536,7 @@ statement ()
     label ();
   switch (Look)
     {
-    case 0x81:
+    case IF:
       if_stmt ();
       break;
     case GOTO:
