@@ -17,5 +17,8 @@ $(EXECUTABLE): $(OBJECTS)
 
 test: test.bas
 	./basic < test.bas > test.s
+	$(CC) -g test.s
 
+tags: $(SOURCES)
+	ctags $(SOURCES)
 

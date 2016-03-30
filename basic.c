@@ -3,16 +3,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 void prologue ();
 void epilogue ();
 
-char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84";
+char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
+  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88";
 
 #define IF   -127
 #define ELSE -126
 #define LET  -125
 #define GOTO -124
+#define OR   -123
+#define AND  -122
+#define NOT  -121
+#define THEN -120
 
 int
 is_addop (char c)
@@ -24,6 +30,12 @@ int
 is_mulop (char c)
 {
   return (c == '*' || c == '/' || c == '&');
+}
+
+bool
+is_relop (char c)
+{
+  return (c == '<' || c == '>' || c == '=');
 }
 
 /*
@@ -225,7 +237,36 @@ match (char c)
 {
   if (Look != c)
     {
-      fprintf (stderr, "Expected %c\n", c);
+      switch (c)
+        {
+          case IF:
+            fprintf (stderr, "Expected IF\n");
+            break;
+          case ELSE:
+            fprintf (stderr, "Expected ELSE\n");
+            break;
+          case LET:
+            fprintf (stderr, "Expected LET\n");
+            break;
+          case GOTO:
+            fprintf (stderr, "Expected GOTO\n");
+            break;
+          case OR:
+            fprintf (stderr, "Expected OR\n");
+            break;
+          case AND:
+            fprintf (stderr, "Expected AND\n");
+            break;
+          case NOT:
+            fprintf (stderr, "Expected NOT\n");
+            break;
+          case THEN:
+            fprintf (stderr, "Expected THEN\n");
+            break;
+          default:
+            fprintf (stderr, "Expected %c\n", c);
+            break;
+        }
       exit (EXIT_FAILURE);
     }
   GetChar ();
@@ -353,6 +394,72 @@ pop_or ()
   printf ("\tor\t%%rax, %%rdx\n");
 }
 
+void
+pop_equals ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tseteb %%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
+void
+pop_neq ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tsetneb %%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
+void
+pop_lt ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tsetbb\t%%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
+void
+pop_lte ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tsetbeb %%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
+void
+pop_gte ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tsetgeb %%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
+void
+pop_gt ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tsetgb %%al\n");
+  printf ("\tcbw\n");
+  printf ("\tcwde\n");
+  printf ("\tcdq\n");
+}
+
 /* Allocate space for a variable. */
 void
 allot (char *name)
@@ -367,6 +474,12 @@ jump (int line_number)
   printf ("\tjmp\tL%d\n", line_number);
 }
 
+void
+negate ()
+{
+  printf ("\tnot\t%%rax\n");
+}
+
 
 
 /* PARSER */
@@ -378,6 +491,13 @@ void divide ();
 void factor ();
 void term ();
 void expression ();
+void condition ();
+void disjunct ();
+void disjunction ();
+void conjunct ();
+void conjunction ();
+void negation ();
+void relation ();
 
 void
 add ()
@@ -395,15 +515,6 @@ subtract ()
   match ('-');
   term ();
   pop_sub ();
-}
-
-void
-or ()
-{
-  push ();
-  match ('|');
-  term ();
-  pop_or ();
 }
 
 /* Parse and translate multiplication of two terms.  */
@@ -428,12 +539,73 @@ divide ()
 
 /* Parse and translate AND of two terms.  */
 void
-and ()
+conjunction ()
 {
   push ();
-  match ('&');
-  factor ();
+  match (AND);
+  conjunct ();
   pop_and ();
+}
+
+void
+disjunction ()
+{
+  push ();
+  match (OR);
+  disjunct ();
+  pop_or ();
+}
+
+void
+equals ()
+{
+  match ('=');
+  expression ();
+  pop_equals ();
+}
+
+void
+less_than ()
+{
+  push ();
+  match ('<');
+  expression ();
+  switch (Look)
+    {
+      case '=':
+        match (Look);
+        pop_lte ();
+        break;
+      case '>':
+        match (Look);
+        pop_neq ();
+        break;
+      default:
+        pop_lt ();
+        break;
+    }
+}
+
+void
+greater_than ()
+{
+  push ();
+  match ('>');
+  expression ();
+  switch (Look)
+    {
+      case '=':
+        match (Look);
+        pop_gte ();
+        break;
+      case '>':
+        match (Look);
+        pop_neq ();
+        break;
+      default:
+        pop_lt ();
+        break;
+    }
 }
 
 /* Parse and translate a factor. */
@@ -463,14 +635,70 @@ term ()
 	case '/':
 	  divide ();
 	  break;
-        case '&':
-          and ();
-          break;
 	}
     }
 }
 
-/* Parse and translate an expression.  */
+/* Parse and translate a relation.  */
+void
+relation ()
+{
+  expression ();
+  if (is_relop (Look))
+    {
+      switch (Look)
+        {
+          case '=':
+            equals ();
+            break;
+          case '<':
+            less_than ();
+            break;
+          case '>':
+            greater_than ();
+            break;
+        }
+    }
+}
+
+
+void
+disjunct ()
+{
+  conjunct ();
+  while (Look == AND)
+    {
+      conjunction ();
+    }
+}
+
+/* Parse and translate a condition. */
+void
+condition ()
+{
+  disjunct ();
+  while (Look == OR)
+    {
+      disjunction ();
+    }
+}
+
+void
+conjunct ()
+{
+  if (Look == NOT)
+    {
+      match (NOT);
+      relation ();
+      negate ();
+    }
+  else
+    {
+      relation ();
+    }
+}
+
+/* Parse and translate a relation.  */
 void
 expression ()
 {
@@ -485,9 +713,6 @@ expression ()
 	case '-':
 	  subtract ();
 	  break;
-        case '|':
-          or ();
-          break;
 	}
     }
 }
@@ -516,9 +741,9 @@ label ()
 void
 goto_stmt ()
 {
-  int lineno;
-  match (GOTO);
-  lineno = get_number ();
+  if (Look == GOTO)
+    match (GOTO);
+  int lineno = get_number ();
   jump (lineno);
 }
 
@@ -526,6 +751,13 @@ goto_stmt ()
 void
 if_stmt ()
 {
+  match (IF);
+  condition ();
+  match (THEN);
+  match (GOTO);
+  int lineno = get_number ();
+  printf ("\tcmp\t%%rax, -1\n");
+  printf ("\tjnz\tL%d\n", lineno);
 }
 
 /* Parse and translate a statement. */
@@ -598,3 +830,4 @@ main (int argc, char *argv[])
   program ();
   return 0;
 }
+
