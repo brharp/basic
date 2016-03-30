@@ -398,8 +398,9 @@ void
 pop_equals ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
-  printf ("\tseteb %%al\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
+  printf ("\tseteb\t%%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -409,8 +410,9 @@ void
 pop_neq ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
-  printf ("\tsetneb %%al\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
+  printf ("\tsetneb\t%%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -420,8 +422,9 @@ void
 pop_lt ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
-  printf ("\tsetbb\t%%al\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
+  printf ("\tsetnbb\t%%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -431,8 +434,9 @@ void
 pop_lte ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
   printf ("\tsetbeb %%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -442,8 +446,9 @@ void
 pop_gte ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
   printf ("\tsetgeb %%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -453,8 +458,9 @@ void
 pop_gt ()
 {
   printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
   printf ("\tsetgb %%al\n");
+  printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
   printf ("\tcdq\n");
@@ -756,7 +762,9 @@ if_stmt ()
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
-  printf ("\tcmp\t%%rax, -1\n");
+  printf ("\tmovsxd\t%%rax, %%eax\n");
+  printf ("\tmov\t%%rdx, -1\n");
+  printf ("\tcmp\t%%rax, %%rdx\n");
   printf ("\tjnz\tL%d\n", lineno);
 }
 
