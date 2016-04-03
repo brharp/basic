@@ -395,6 +395,52 @@ pop_or ()
 }
 
 void
+cmp ()
+{
+  printf ("\tpop\t%%rdx\n");
+  printf ("\tcmp\t%%rdx, %%rax\n");
+}
+
+/* ----------------------------------------------------------------- */
+/* Sign Extend Boolean Value to RAX */
+
+void
+sign_extend ()
+{
+  printf ("\tnegb\t%%al\n");
+  printf ("\tmovsx\t%%rax, %%al\n");
+}
+
+/* ----------------------------------------------------------------- */
+/* Set byte if not equal. */
+
+void
+set_not_equal ()
+{
+  printf ("\tsetneb\t%%al\n");
+}
+
+/* ----------------------------------------------------------------- */
+/* Set byte if less or equal. */
+
+void
+set_less_or_equal ()
+{
+  printf ("\tsetleb\t%%al\n");
+}
+
+/* ----------------------------------------------------------------- */
+/* Set byte if less. */
+
+void
+set_less ()
+{
+  printf ("\tsetbb\t%%al\n");
+  printf ("\tnegb\t%%al\n");
+  printf ("\tmovsx\t%%rax, %%al\n");
+}
+
+void
 pop_equals ()
 {
   printf ("\tpop\t%%rdx\n");
@@ -423,7 +469,7 @@ pop_lt ()
 {
   printf ("\tpop\t%%rdx\n");
   printf ("\tcmp\t%%rdx, %%rax\n");
-  printf ("\tsetnbb\t%%al\n");
+  printf ("\tsetbb\t%%al\n");
   printf ("\tnegb\t%%al\n");
   printf ("\tcbw\n");
   printf ("\tcwde\n");
@@ -484,6 +530,13 @@ void
 negate ()
 {
   printf ("\tnot\t%%rax\n");
+}
+
+void
+branch_if (int lineno)
+{
+  printf ("\ttest\t%%rax, 0\n");
+  printf ("\tjnz\tL%d\n", lineno);
 }
 
 
@@ -571,23 +624,45 @@ equals ()
 }
 
 void
+less_or_equal ()
+{
+  match ('=');
+  expression ();
+  cmp ();
+  set_less_or_equal ();
+}
+
+/* ------------------------------------------------------------------ */
+/* Recognize and Translate a Relational "Not Equals" */
+
+void
+not_equal ()
+{
+  match ('>');
+  expression ();
+  cmp ();
+  set_not_equal ();
+}
+
+/* ------------------------------------------------------------------ */
+/* Recognize and Translate a Relational "Less Than" */
+
+void
 less_than ()
 {
-  push ();
   match ('<');
-  expression ();
   switch (Look)
     {
       case '=':
-        match (Look);
-        pop_lte ();
-        break;
+	less_or_equal ();
+	break;
       case '>':
-        match (Look);
-        pop_neq ();
+	not_equal ();
         break;
       default:
-        pop_lt ();
+	expression ();
+        cmp ();
+	set_less ();
         break;
     }
 }
@@ -652,6 +727,7 @@ relation ()
   expression ();
   if (is_relop (Look))
     {
+      push ();
       switch (Look)
         {
           case '=':
@@ -762,10 +838,7 @@ if_stmt ()
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
-  printf ("\tmovsxd\t%%rax, %%eax\n");
-  printf ("\tmov\t%%rdx, -1\n");
-  printf ("\tcmp\t%%rax, %%rdx\n");
-  printf ("\tjnz\tL%d\n", lineno);
+  branch_if (lineno);
 }
 
 /* Parse and translate a statement. */
