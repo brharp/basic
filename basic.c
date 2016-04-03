@@ -5,11 +5,17 @@
 #include <ctype.h>
 #include <stdbool.h>
 
+/* ------------------------------------------------------------------ */
+
 void prologue ();
 void epilogue ();
 
+/* ------------------------------------------------------------------ */
+
 char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
   "OR\x85" "AND\x86" "NOT\x87" "THEN\x88";
+
+/* ------------------------------------------------------------------ */
 
 #define IF   -127
 #define ELSE -126
@@ -20,17 +26,23 @@ char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
 #define NOT  -121
 #define THEN -120
 
+/* ------------------------------------------------------------------ */
+
 int
 is_addop (char c)
 {
   return (c == '+' || c == '-' || c == '|');
 }
 
+/* ------------------------------------------------------------------ */
+
 int
 is_mulop (char c)
 {
   return (c == '*' || c == '/' || c == '&');
 }
+
+/* ------------------------------------------------------------------ */
 
 bool
 is_relop (char c)
@@ -42,6 +54,8 @@ is_relop (char c)
  * ERROR UNIT
  */
 
+/* ------------------------------------------------------------------ */
+
 void
 syntax_error ()
 {
@@ -49,12 +63,16 @@ syntax_error ()
   exit (EXIT_FAILURE);
 }
 
+/* ------------------------------------------------------------------ */
+
 void
 out_of_memory ()
 {
   fprintf (stderr, "Out of memory\n");
   exit (EXIT_FAILURE);
 }
+
+/* ------------------------------------------------------------------ */
 
 void
 undefined (char *name)
@@ -66,15 +84,21 @@ undefined (char *name)
 
 /* SYMBOL TABLE */
 
+/* ------------------------------------------------------------------ */
+
 struct symbol
 {
   char *name;
   struct symbol *next;
 };
 
+/* ------------------------------------------------------------------ */
 /* The symbol table. */
+
 static struct symbol *symbol_table = NULL;
 void allot (char *);
+
+/* ------------------------------------------------------------------ */
 
 struct symbol *
 lookup (char *name)
@@ -312,37 +336,48 @@ get_number ()
 }
 
 
+/* ----------------------------------------------------------------- */
 /* CODE GENERATION */
 
+/* ----------------------------------------------------------------- */
 /* Load constant N into primary register. */
+
 void
 load_constant (int n)
 {
   printf ("\tmov\t%%rax, %d\n", n);
 }
 
+/* ----------------------------------------------------------------- */
 /* Load a variable into primary register. */
+
 void
 load_variable (char *name)
 {
   printf ("\tmov\t%%rax, %s\n", name);
 }
 
+/* ----------------------------------------------------------------- */
 /* Store primary value into variable.  */
+
 void
 store (char *name)
 {
   printf ("\tmov\t%s, %%rax\n", name);
 }
 
+/* ----------------------------------------------------------------- */
 /* Push primary register to stack. */
+
 void
 push ()
 {
   printf ("\tpush\t%%rax\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Divide top of stack by primary value. */
+
 void
 pop_div ()
 {
@@ -353,7 +388,9 @@ pop_div ()
   printf ("\tidiv\t%%rcx\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Multiply primary value by top of stack. */
+
 void
 pop_mul ()
 {
@@ -361,7 +398,9 @@ pop_mul ()
   printf ("\timul\t%%rax, %%rdx\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Subtract primary from top of stack.  */
+
 void
 pop_sub ()
 {
@@ -370,15 +409,18 @@ pop_sub ()
   printf ("\tsub\t%%rax, %%rdx\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Add top of stack to primary.  */
+
 void
 pop_add ()
 {
   printf ("\tpop\t%%rdx\n");
   printf ("\tadd\t%%rax, %%rdx\n");
 }
-
+/* ----------------------------------------------------------------- */
 /* Logical AND top of stack with primary accumulator. */
+
 void
 pop_and ()
 {
@@ -386,7 +428,9 @@ pop_and ()
   printf ("\tand\t%%rax, %%rdx\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Or top of stack with primary accumulator. */
+
 void
 pop_or ()
 {
@@ -394,8 +438,11 @@ pop_or ()
   printf ("\tor\t%%rax, %%rdx\n");
 }
 
+/* ----------------------------------------------------------------- */
+/* Compare primary value with top of stack. */
+
 void
-cmp ()
+pop_compare ()
 {
   printf ("\tpop\t%%rdx\n");
   printf ("\tcmp\t%%rdx, %%rax\n");
@@ -440,6 +487,8 @@ set_less ()
   printf ("\tmovsx\t%%rax, %%al\n");
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 pop_equals ()
 {
@@ -451,6 +500,8 @@ pop_equals ()
   printf ("\tcwde\n");
   printf ("\tcdq\n");
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 pop_neq ()
@@ -464,6 +515,8 @@ pop_neq ()
   printf ("\tcdq\n");
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 pop_lt ()
 {
@@ -475,6 +528,8 @@ pop_lt ()
   printf ("\tcwde\n");
   printf ("\tcdq\n");
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 pop_lte ()
@@ -488,6 +543,8 @@ pop_lte ()
   printf ("\tcdq\n");
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 pop_gte ()
 {
@@ -499,6 +556,8 @@ pop_gte ()
   printf ("\tcwde\n");
   printf ("\tcdq\n");
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 pop_gt ()
@@ -512,25 +571,33 @@ pop_gt ()
   printf ("\tcdq\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Allocate space for a variable. */
+
 void
 allot (char *name)
 {
   printf ("\t.comm\t%s, 8\n", name);
 }
 
+/* ----------------------------------------------------------------- */
 /* Unconditional jump to label. */
+
 void
 jump (int line_number)
 {
   printf ("\tjmp\tL%d\n", line_number);
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 negate ()
 {
   printf ("\tnot\t%%rax\n");
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 branch_if (int lineno)
@@ -541,7 +608,10 @@ branch_if (int lineno)
 
 
 
+/* ----------------------------------------------------------------- */
 /* PARSER */
+
+/* ----------------------------------------------------------------- */
 
 void add ();
 void subtract ();
@@ -558,6 +628,8 @@ void conjunction ();
 void negation ();
 void relation ();
 
+/* ----------------------------------------------------------------- */
+
 void
 add ()
 {
@@ -566,6 +638,8 @@ add ()
   term ();
   pop_add ();
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 subtract ()
@@ -576,7 +650,9 @@ subtract ()
   pop_sub ();
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate multiplication of two terms.  */
+
 void
 multiply ()
 {
@@ -586,7 +662,9 @@ multiply ()
   pop_mul ();
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate division of two terms.  */
+
 void
 divide ()
 {
@@ -596,7 +674,9 @@ divide ()
   pop_div ();
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate AND of two terms.  */
+
 void
 conjunction ()
 {
@@ -605,6 +685,8 @@ conjunction ()
   conjunct ();
   pop_and ();
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 disjunction ()
@@ -615,6 +697,8 @@ disjunction ()
   pop_or ();
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 equals ()
 {
@@ -622,6 +706,8 @@ equals ()
   expression ();
   pop_equals ();
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 less_or_equal ()
@@ -667,6 +753,8 @@ less_than ()
     }
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 greater_than ()
 {
@@ -689,7 +777,9 @@ greater_than ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a factor. */
+
 void
 factor ()
 {
@@ -701,7 +791,9 @@ factor ()
     syntax_error ();
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a term.  */
+
 void
 term ()
 {
@@ -720,7 +812,9 @@ term ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a relation.  */
+
 void
 relation ()
 {
@@ -744,6 +838,8 @@ relation ()
 }
 
 
+/* ----------------------------------------------------------------- */
+
 void
 disjunct ()
 {
@@ -754,7 +850,9 @@ disjunct ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a condition. */
+
 void
 condition ()
 {
@@ -764,6 +862,8 @@ condition ()
       disjunction ();
     }
 }
+
+/* ----------------------------------------------------------------- */
 
 void
 conjunct ()
@@ -780,7 +880,9 @@ conjunct ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a relation.  */
+
 void
 expression ()
 {
@@ -799,7 +901,9 @@ expression ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate an assignment statement.  */
+
 void
 assignment ()
 {
@@ -811,7 +915,9 @@ assignment ()
   store (var);
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a label. */
+
 void
 label ()
 {
@@ -819,7 +925,9 @@ label ()
   printf ("L%d:\n", n);
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a goto statement. */
+
 void
 goto_stmt ()
 {
@@ -829,7 +937,9 @@ goto_stmt ()
   jump (lineno);
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate an if statement. */
+
 void
 if_stmt ()
 {
@@ -841,7 +951,9 @@ if_stmt ()
   branch_if (lineno);
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a statement. */
+
 void
 statement ()
 {
@@ -862,7 +974,9 @@ statement ()
   match ('\n');
 }
 
+/* ----------------------------------------------------------------- */
 /* Parse and translate a program.  */
+
 void
 program ()
 {
@@ -872,7 +986,9 @@ program ()
     }
 }
 
+/* ----------------------------------------------------------------- */
 /* The standard prologue. */
+
 void
 prologue ()
 {
@@ -886,6 +1002,8 @@ prologue ()
   printf ("\tmov\tQWORD PTR [%%rbp-16], %%rsi\n");
 }
 
+/* ----------------------------------------------------------------- */
+
 void
 epilogue ()
 {
@@ -894,7 +1012,9 @@ epilogue ()
   printf ("\tret\n");
 }
 
+/* ----------------------------------------------------------------- */
 /* Initialize global structures. */
+
 void
 init ()
 {
@@ -902,7 +1022,9 @@ init ()
   atexit (epilogue);
 }
 
+/* ----------------------------------------------------------------- */
 /* The main program. */
+
 int
 main (int argc, char *argv[])
 {
