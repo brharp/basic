@@ -156,18 +156,18 @@ Tokenize (char *s)
 	}
       else if (*s == '"')
 	{
-	  char c, t = *s;
-	  *d = *s;
-	  ++d;
-	  ++s;
+	  char cur, term = *s;
+	  *d = *s; /* Copy opening quote. */
+	  ++d; /* Skip open quote in destination. */
+	  ++s; /* Skip open quote in source. */
 	  while (*s)
 	    {
-	      c = *s;
-	      *d = c;
+	      cur = *s; /* Copy next char. */
+	      *d = cur;
 	      ++d;
 	      ++s;
-	      if (c == t)
-		break;
+	      if (cur == term)
+		break; /* If end quote, break. */
 	    }
 	}
       else
@@ -213,6 +213,8 @@ Tokenize (char *s)
   *d = '\0';
 }
 
+/* ------------------------------------------------------------------ */
+
 void
 Dump (char *s)
 {
@@ -221,9 +223,13 @@ Dump (char *s)
     fprintf (stderr, "\t%c\t$%hhx\t%d\n", *p, *p, *p);
 }
 
+/* ------------------------------------------------------------------ */
+
 int Look;
 
+/* ------------------------------------------------------------------ */
 /* Gets a non-blank line from stdin. */
+
 void
 get_line (char *s, int size)
 {
@@ -237,6 +243,8 @@ get_line (char *s, int size)
     }
   while (!strcspn (s, " \t\n"));
 }
+
+/* ------------------------------------------------------------------ */
 
 int
 GetChar ()
@@ -255,6 +263,8 @@ GetChar ()
   Look = LineBuffer[LinePos++];
   return 1;
 }
+
+/* ------------------------------------------------------------------ */
 
 void
 match (char c)
@@ -296,12 +306,16 @@ match (char c)
   GetChar ();
 }
 
+/* ------------------------------------------------------------------ */
+
 void
 Expected (char *what)
 {
   printf ("Expected %s\n", what);
   exit (EXIT_FAILURE);
 }
+
+/* ------------------------------------------------------------------ */
 
 char *
 get_var ()
@@ -319,6 +333,8 @@ get_var ()
   struct symbol *sp = lookup (name);
   return sp->name;
 }
+
+/* ------------------------------------------------------------------ */
 
 int
 get_number ()
@@ -452,123 +468,68 @@ pop_compare ()
 /* Sign Extend Boolean Value to RAX */
 
 void
-sign_extend ()
+sign_extend_bool ()
 {
   printf ("\tnegb\t%%al\n");
   printf ("\tmovsx\t%%rax, %%al\n");
 }
 
 /* ----------------------------------------------------------------- */
-/* Set byte if not equal. */
+/* Load "true" if last comparison was equal. */
+
+void
+set_equal ()
+{
+  printf ("\tseteb\t%%al\n");
+  sign_extend_bool ();
+}
+
+/* ----------------------------------------------------------------- */
+/* Sets byte if last comparison was not equal. */
 
 void
 set_not_equal ()
 {
   printf ("\tsetneb\t%%al\n");
+  sign_extend_bool ();
 }
 
 /* ----------------------------------------------------------------- */
-/* Set byte if less or equal. */
+/* Sets byte if last comparison was less or equal. */
 
 void
 set_less_or_equal ()
 {
   printf ("\tsetleb\t%%al\n");
+  sign_extend_bool ();
 }
 
 /* ----------------------------------------------------------------- */
-/* Set byte if less. */
+/* Sets byte if last comparison was less. */
 
 void
 set_less ()
 {
   printf ("\tsetbb\t%%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tmovsx\t%%rax, %%al\n");
+  sign_extend_bool ();
 }
 
 /* ----------------------------------------------------------------- */
 
 void
-pop_equals ()
+set_greater_or_equal ()
 {
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
-  printf ("\tseteb\t%%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-pop_neq ()
-{
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
-  printf ("\tsetneb\t%%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-pop_lt ()
-{
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
-  printf ("\tsetbb\t%%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-pop_lte ()
-{
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
-  printf ("\tsetbeb %%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-pop_gte ()
-{
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
   printf ("\tsetgeb %%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
+  sign_extend_bool ();
 }
 
 /* ----------------------------------------------------------------- */
 
 void
-pop_gt ()
+set_greater ()
 {
-  printf ("\tpop\t%%rdx\n");
-  printf ("\tcmp\t%%rdx, %%rax\n");
   printf ("\tsetgb %%al\n");
-  printf ("\tnegb\t%%al\n");
-  printf ("\tcbw\n");
-  printf ("\tcwde\n");
-  printf ("\tcdq\n");
+  sign_extend_bool ();
 }
 
 /* ----------------------------------------------------------------- */
@@ -704,7 +665,8 @@ equals ()
 {
   match ('=');
   expression ();
-  pop_equals ();
+  pop_compare ();
+  set_equal ();
 }
 
 /* ----------------------------------------------------------------- */
@@ -714,8 +676,19 @@ less_or_equal ()
 {
   match ('=');
   expression ();
-  cmp ();
+  pop_compare ();
   set_less_or_equal ();
+}
+
+/* ------------------------------------------------------------------ */
+
+void
+greater_or_equal ()
+{
+  match ('=');
+  expression ();
+  pop_compare ();
+  set_greater_or_equal ();
 }
 
 /* ------------------------------------------------------------------ */
@@ -726,7 +699,7 @@ not_equal ()
 {
   match ('>');
   expression ();
-  cmp ();
+  pop_compare ();
   set_not_equal ();
 }
 
@@ -740,15 +713,15 @@ less_than ()
   switch (Look)
     {
       case '=':
-	less_or_equal ();
-	break;
+        less_or_equal ();
+        break;
       case '>':
-	not_equal ();
+        not_equal ();
         break;
       default:
-	expression ();
-        cmp ();
-	set_less ();
+        expression ();
+        pop_compare ();
+        set_less ();
         break;
     }
 }
@@ -758,21 +731,19 @@ less_than ()
 void
 greater_than ()
 {
-  push ();
   match ('>');
-  expression ();
   switch (Look)
     {
       case '=':
-        match (Look);
-        pop_gte ();
+        greater_or_equal ();
         break;
       case '>':
-        match (Look);
-        pop_neq ();
+        not_equal ();
         break;
       default:
-        pop_lt ();
+        expression ();
+        pop_compare ();
+        set_greater ();
         break;
     }
 }
