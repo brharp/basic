@@ -10,3 +10,7 @@
   <term>          := <signed factor> [ <mulop> <factor> ]*
   <signed factor> := [ <addop> ] <factor>
   <factor>        := <integer> | <variable> | (<expression>)
+
+## Operator precedence parsing (shunting yard algorithm)
+
+https://en.wikipedia.org/wiki/Shunting-yard_algorithm
