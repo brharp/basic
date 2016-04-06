@@ -581,12 +581,12 @@ void divide ();
 void factor ();
 void term ();
 void expression ();
-void condition ();
-void disjunct ();
-void disjunction ();
-void conjunct ();
-void conjunction ();
-void negation ();
+void bool_expression ();
+void bool_term ();
+void bool_factor ();
+void or ();
+void and ();
+void not_factor ();
 void relation ();
 
 /* ----------------------------------------------------------------- */
@@ -636,25 +636,91 @@ divide ()
 }
 
 /* ----------------------------------------------------------------- */
+
+void
+sub_expression ()
+{
+  match ('(');
+  bool_expression ();
+  match (')');
+}  
+
+/* ----------------------------------------------------------------- */
+/* Parse and translate a factor. */
+
+void
+factor ()
+{
+  if (Look == '(')
+    sub_expression ();
+  else if (isalpha (Look))
+    load_variable (get_var ());
+  else if (isdigit (Look))
+    load_constant (get_number ());
+  else
+    syntax_error ();
+}
+
+/* ----------------------------------------------------------------- */
+/* Parse and translate a term.  */
+
+void
+term ()
+{
+  factor ();
+  while (is_mulop (Look))
+    {
+      switch (Look)
+        {
+        case '*':
+          multiply ();
+          break;
+        case '/':
+          divide ();
+          break;
+        }
+    }
+}
+
+/* ----------------------------------------------------------------- */
+/* Parse and translate a mathematical expression.  */
+
+void
+expression ()
+{
+  term ();
+  while (is_addop (Look))
+    {
+      switch (Look)
+        {
+        case '+':
+          add ();
+          break;
+        case '-':
+          subtract ();
+          break;
+        }
+    }
+}
+
+/* ----------------------------------------------------------------- */
 /* Parse and translate AND of two terms.  */
 
 void
-conjunction ()
+and ()
 {
-  push ();
   match (AND);
-  conjunct ();
+  not_factor ();
   pop_and ();
 }
 
 /* ----------------------------------------------------------------- */
 
 void
-disjunction ()
+or ()
 {
-  push ();
   match (OR);
-  disjunct ();
+  bool_term ();
   pop_or ();
 }
 
@@ -749,41 +815,6 @@ greater_than ()
 }
 
 /* ----------------------------------------------------------------- */
-/* Parse and translate a factor. */
-
-void
-factor ()
-{
-  if (isalpha (Look))
-    load_variable (get_var ());
-  else if (isdigit (Look))
-    load_constant (get_number ());
-  else
-    syntax_error ();
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate a term.  */
-
-void
-term ()
-{
-  factor ();
-  while (is_mulop (Look))
-    {
-      switch (Look)
-	{
-	case '*':
-	  multiply ();
-	  break;
-	case '/':
-	  divide ();
-	  break;
-	}
-    }
-}
-
-/* ----------------------------------------------------------------- */
 /* Parse and translate a relation.  */
 
 void
@@ -812,32 +843,34 @@ relation ()
 /* ----------------------------------------------------------------- */
 
 void
-disjunct ()
+bool_term ()
 {
-  conjunct ();
+  not_factor ();
   while (Look == AND)
     {
-      conjunction ();
+      push ();
+      and ();
     }
 }
 
 /* ----------------------------------------------------------------- */
 /* Parse and translate a condition. */
-
+ 
 void
-condition ()
+bool_expression ()
 {
-  disjunct ();
+  bool_term ();
   while (Look == OR)
     {
-      disjunction ();
+      push ();
+      or ();
     }
 }
 
 /* ----------------------------------------------------------------- */
 
 void
-conjunct ()
+not_factor ()
 {
   if (Look == NOT)
     {
@@ -848,27 +881,6 @@ conjunct ()
   else
     {
       relation ();
-    }
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate a relation.  */
-
-void
-expression ()
-{
-  term ();
-  while (is_addop (Look))
-    {
-      switch (Look)
-	{
-	case '+':
-	  add ();
-	  break;
-	case '-':
-	  subtract ();
-	  break;
-	}
     }
 }
 
@@ -915,7 +927,7 @@ void
 if_stmt ()
 {
   match (IF);
-  condition ();
+  bool_expression ();
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
