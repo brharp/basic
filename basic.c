@@ -50,6 +50,14 @@ is_relop (char c)
   return (c == '<' || c == '>' || c == '=');
 }
 
+/* ------------------------------------------------------------------ */
+
+int 
+is_op (char c)
+{
+  return (is_addop (c) || is_mulop (c));
+}
+
 /*
  * ERROR UNIT
  */
@@ -652,7 +660,11 @@ void
 factor ()
 {
   if (Look == '(')
-    sub_expression ();
+    {
+      match ('(');
+      expression ();
+      match (')');
+    }
   else if (isalpha (Look))
     load_variable (get_var ());
   else if (isdigit (Look))
@@ -683,14 +695,56 @@ term ()
 }
 
 /* ----------------------------------------------------------------- */
+/* Parse and translate an operator. */
+
+void
+operator (char op)
+{
+  printf ("\t<operator %c>\n", op);
+}
+
+int
+operator_precedence (char op)
+{
+  switch (op)
+    {
+    case '|':
+      return 1;
+    case '&':
+      return 2;
+    case '+':
+    case '-':
+      return 3;
+    case '*':
+    case '/':
+      return 4;
+    default:
+      return 0;
+    }
+}
+
+/* ----------------------------------------------------------------- */
 /* Parse and translate a mathematical expression.  */
 
 void
-expression ()
-{
-  term ();
-  while (is_addop (Look))
+expression2 (int level)
+{  
+  while (is_op (Look) || isdigit (Look) || isalpha (Look) || Look == '(')
     {
+      if (!is_op (Look))
+        {
+          //load_constant (get_number ());
+          factor ();
+          push ();
+        }
+      char op = Look;
+      int precedence = operator_precedence (op);
+      if (precedence <= level)
+        return;
+      GetChar ();
+      expression2 (precedence);
+      operator (op); 
+        /*
       switch (Look)
         {
         case '+':
@@ -700,7 +754,14 @@ expression ()
           subtract ();
           break;
         }
+        */
     }
+}
+
+void
+expression (void)
+{
+  expression2 (0);
 }
 
 /* ----------------------------------------------------------------- */
@@ -1012,8 +1073,9 @@ int
 main (int argc, char *argv[])
 {
   init ();
-  prologue ();
-  program ();
+  //prologue ();
+  //program ();
+  expression();
   return 0;
 }
 
