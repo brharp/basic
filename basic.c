@@ -359,6 +359,9 @@ get_number ()
     }
   return atoi (s);
 }
+
+/* ----------------------------------------------------------------- */
+
 
 
 /* ----------------------------------------------------------------- */
@@ -404,7 +407,7 @@ push ()
 /* Divide top of stack by primary value. */
 
 void
-pop_div ()
+pop_div (void)
 {
   printf ("\tmov\t%%rcx, %%rax\n");
   printf ("\tpop\t%%rax\n");
@@ -417,7 +420,7 @@ pop_div ()
 /* Multiply primary value by top of stack. */
 
 void
-pop_mul ()
+pop_mul (void)
 {
   printf ("\tpop\t%%rdx\n");
   printf ("\timul\t%%rax, %%rdx\n");
@@ -427,7 +430,7 @@ pop_mul ()
 /* Subtract primary from top of stack.  */
 
 void
-pop_sub ()
+pop_sub (void)
 {
   printf ("\tmov\t%%rdx, %%rax\n");
   printf ("\tpop\t%%rax\n");
@@ -438,11 +441,12 @@ pop_sub ()
 /* Add top of stack to primary.  */
 
 void
-pop_add ()
+pop_add (void)
 {
   printf ("\tpop\t%%rdx\n");
   printf ("\tadd\t%%rax, %%rdx\n");
 }
+
 /* ----------------------------------------------------------------- */
 /* Logical AND top of stack with primary accumulator. */
 
@@ -624,7 +628,16 @@ term ()
 void
 operator (char op)
 {
-  printf ("\t<operator %c>\n", op);
+  switch (op)
+    {
+      case '+': pop_add (); break;
+      case '-': pop_sub (); break;
+      case '*': pop_mul (); break;
+      case '/': pop_div (); break;
+      default:
+        errx (EXIT_FAILURE, "unknown operator %c", op);
+        break;
+    }
 }
 
 /* ----------------------------------------------------------------- */
@@ -654,7 +667,7 @@ operator_precedence (char op)
 /* Relative operator precedence. */
 
 int
-precedence (char op1, char op2)
+precedence_compare (char op1, char op2)
 {
   return operator_precedence (op1) - operator_precedence (op2);
 }
@@ -665,31 +678,32 @@ precedence (char op1, char op2)
 void
 expression (void)
 {
-  char stack [32];
+  char stack [16];
   const int stack_sz = sizeof (stack) / sizeof (stack[0]);
-  int i = -1;
+  int i = 0;
 
   term ();
+
   while (is_op (Look))
     {
       char op = Look;
       GetChar ();
-      while (i >= 0 && precedence (op, stack[i]) <= 0)
+      while (i > 0 && precedence_compare (op, stack[i-1]) <= 0)
         {
-          operator (stack [i--]);
+          operator (stack [--i]);
         }
       if (i >= stack_sz)
         {
-          err (EXIT_FAILURE, "operator stack overflow");
+          errx (EXIT_FAILURE, "operator stack overflow");
         }
-      stack [++i] = op;
+      stack [i++] = op;
       push ();
       term ();
     }
 
-  while (i >= 0)
+  while (i > 0)
     {
-      operator (stack [i--]);
+      operator (stack [--i]);
     }
 }
 
