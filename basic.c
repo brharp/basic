@@ -32,7 +32,7 @@ char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
 int
 is_addop (char c)
 {
-  return (c == '+' || c == '-' || c == '|');
+  return (c == '+' || c == '-');
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,7 +40,7 @@ is_addop (char c)
 int
 is_mulop (char c)
 {
-  return (c == '*' || c == '/' || c == '&');
+  return (c == '*' || c == '/');
 }
 
 /* ------------------------------------------------------------------ */
@@ -53,10 +53,18 @@ is_relop (char c)
 
 /* ------------------------------------------------------------------ */
 
+int
+is_boolop (char c)
+{
+  return (c == OR || c == AND);
+}
+
+/* ------------------------------------------------------------------ */
+
 int 
 is_op (char c)
 {
-  return (is_addop (c) || is_mulop (c));
+  return (is_addop (c) || is_mulop (c) || is_boolop (c));
 }
 
 /*
@@ -468,6 +476,14 @@ pop_or ()
 }
 
 /* ----------------------------------------------------------------- */
+
+void
+not ()
+{
+  printf ("\tnot\t%%rax\n");
+}
+
+/* ----------------------------------------------------------------- */
 /* Compare primary value with top of stack. */
 
 void
@@ -566,14 +582,6 @@ jump (int line_number)
 /* ----------------------------------------------------------------- */
 
 void
-negate ()
-{
-  printf ("\tnot\t%%rax\n");
-}
-
-/* ----------------------------------------------------------------- */
-
-void
 branch_if (int lineno)
 {
   printf ("\ttest\t%%rax, 0\n");
@@ -594,9 +602,6 @@ void divide ();
 void factor ();
 void term ();
 void expression ();
-void bool_expression ();
-void bool_term ();
-void bool_factor ();
 void or ();
 void and ();
 void not_factor ();
@@ -605,9 +610,19 @@ void relation ();
 /* ----------------------------------------------------------------- */
 /* Parse and translate a factor. */
 
+void operator (char op);
+
 void
 term ()
 {
+  char unary_op = 0;
+
+  if (Look == NOT)
+    {
+      unary_op = Look;
+      GetChar ();
+    }
+
   if (Look == '(')
     {
       match ('(');
@@ -620,6 +635,11 @@ term ()
     load_constant (get_number ());
   else
     syntax_error ();
+
+  if (unary_op != 0)
+    {
+      operator (unary_op);
+    }
 }
 
 /* ----------------------------------------------------------------- */
@@ -634,6 +654,9 @@ operator (char op)
       case '-': pop_sub (); break;
       case '*': pop_mul (); break;
       case '/': pop_div (); break;
+      case OR: pop_or (); break;
+      case AND: pop_and (); break;
+      case NOT: not (); break;
       default:
         errx (EXIT_FAILURE, "unknown operator %c", op);
         break;
@@ -648,18 +671,20 @@ operator_precedence (char op)
 {
   switch (op)
     {
-    case '|':
+    case OR:
       return 1;
-    case '&':
+    case AND:
       return 2;
+    case NOT:
+      return 3;
     case '+':
     case '-':
-      return 3;
+      return 4;
     case '*':
     case '/':
-      return 4;
+      return 5;
     default:
-      return 0;
+      errx (EXIT_FAILURE, "unknown operator: %c", op);
     }
 }
 
@@ -705,27 +730,6 @@ expression (void)
     {
       operator (stack [--i]);
     }
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate AND of two terms.  */
-
-void
-and ()
-{
-  match (AND);
-  not_factor ();
-  pop_and ();
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-or ()
-{
-  match (OR);
-  bool_term ();
-  pop_or ();
 }
 
 /* ----------------------------------------------------------------- */
@@ -843,51 +847,6 @@ relation ()
     }
 }
 
-
-/* ----------------------------------------------------------------- */
-
-void
-bool_term ()
-{
-  not_factor ();
-  while (Look == AND)
-    {
-      push ();
-      and ();
-    }
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate a condition. */
- 
-void
-bool_expression ()
-{
-  bool_term ();
-  while (Look == OR)
-    {
-      push ();
-      or ();
-    }
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-not_factor ()
-{
-  if (Look == NOT)
-    {
-      match (NOT);
-      relation ();
-      negate ();
-    }
-  else
-    {
-      relation ();
-    }
-}
-
 /* ----------------------------------------------------------------- */
 /* Parse and translate an assignment statement.  */
 
@@ -931,7 +890,7 @@ void
 if_stmt ()
 {
   match (IF);
-  bool_expression ();
+  expression ();
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
