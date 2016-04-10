@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <err.h>
 
 /* ------------------------------------------------------------------ */
 
@@ -598,66 +599,10 @@ void not_factor ();
 void relation ();
 
 /* ----------------------------------------------------------------- */
-
-void
-add ()
-{
-  push ();
-  match ('+');
-  term ();
-  pop_add ();
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-subtract ()
-{
-  push ();
-  match ('-');
-  term ();
-  pop_sub ();
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate multiplication of two terms.  */
-
-void
-multiply ()
-{
-  push ();
-  match ('*');
-  factor ();
-  pop_mul ();
-}
-
-/* ----------------------------------------------------------------- */
-/* Parse and translate division of two terms.  */
-
-void
-divide ()
-{
-  push ();
-  match ('/');
-  factor ();
-  pop_div ();
-}
-
-/* ----------------------------------------------------------------- */
-
-void
-sub_expression ()
-{
-  match ('(');
-  bool_expression ();
-  match (')');
-}  
-
-/* ----------------------------------------------------------------- */
 /* Parse and translate a factor. */
 
 void
-factor ()
+term ()
 {
   if (Look == '(')
     {
@@ -674,27 +619,6 @@ factor ()
 }
 
 /* ----------------------------------------------------------------- */
-/* Parse and translate a term.  */
-
-void
-term ()
-{
-  factor ();
-  while (is_mulop (Look))
-    {
-      switch (Look)
-        {
-        case '*':
-          multiply ();
-          break;
-        case '/':
-          divide ();
-          break;
-        }
-    }
-}
-
-/* ----------------------------------------------------------------- */
 /* Parse and translate an operator. */
 
 void
@@ -702,6 +626,9 @@ operator (char op)
 {
   printf ("\t<operator %c>\n", op);
 }
+
+/* ----------------------------------------------------------------- */
+/* Return operator precendence. */
 
 int
 operator_precedence (char op)
@@ -724,44 +651,46 @@ operator_precedence (char op)
 }
 
 /* ----------------------------------------------------------------- */
-/* Parse and translate a mathematical expression.  */
+/* Relative operator precedence. */
 
-void
-expression2 (int level)
-{  
-  while (is_op (Look) || isdigit (Look) || isalpha (Look) || Look == '(')
-    {
-      if (!is_op (Look))
-        {
-          //load_constant (get_number ());
-          factor ();
-          push ();
-        }
-      char op = Look;
-      int precedence = operator_precedence (op);
-      if (precedence <= level)
-        return;
-      GetChar ();
-      expression2 (precedence);
-      operator (op); 
-        /*
-      switch (Look)
-        {
-        case '+':
-          add ();
-          break;
-        case '-':
-          subtract ();
-          break;
-        }
-        */
-    }
+int
+precedence (char op1, char op2)
+{
+  return operator_precedence (op1) - operator_precedence (op2);
 }
+
+/* ----------------------------------------------------------------- */
+/* Parse and translate a mathematical expression.  */
 
 void
 expression (void)
 {
-  expression2 (0);
+  char stack [32];
+  const int stack_sz = sizeof (stack) / sizeof (stack[0]);
+  int i = -1;
+
+  term ();
+  while (is_op (Look))
+    {
+      char op = Look;
+      GetChar ();
+      while (i >= 0 && precedence (op, stack[i]) <= 0)
+        {
+          operator (stack [i--]);
+        }
+      if (i >= stack_sz)
+        {
+          err (EXIT_FAILURE, "operator stack overflow");
+        }
+      stack [++i] = op;
+      push ();
+      term ();
+    }
+
+  while (i >= 0)
+    {
+      operator (stack [i--]);
+    }
 }
 
 /* ----------------------------------------------------------------- */
