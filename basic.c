@@ -14,25 +14,30 @@ void epilogue ();
 /* ------------------------------------------------------------------ */
 
 char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
-  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88";
+  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88" "+\x89" "-\x90"
+  "*\x91" "/\x92";
 
 /* ------------------------------------------------------------------ */
 
-#define IF   -127
-#define ELSE -126
-#define LET  -125
-#define GOTO -124
-#define OR   -123
-#define AND  -122
-#define NOT  -121
-#define THEN -120
+#define IF    -127
+#define ELSE  -126
+#define LET   -125
+#define GOTO  -124
+#define OR    -123
+#define AND   -122
+#define NOT   -121
+#define THEN  -120
+#define PLUS  -119
+#define MINUS -118
+#define MUL   0x91
+#define DIV   0x92
 
 /* ------------------------------------------------------------------ */
 
 int
 is_addop (char c)
 {
-  return (c == '+' || c == '-');
+  return (c == PLUS || c == MINUS);
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,7 +45,7 @@ is_addop (char c)
 int
 is_mulop (char c)
 {
-  return (c == '*' || c == '/');
+  return (c == MUL || c == DIV);
 }
 
 /* ------------------------------------------------------------------ */
@@ -688,21 +693,57 @@ operator_precedence (char op)
     }
 }
 
-/* ----------------------------------------------------------------- */
-/* Relative operator precedence. */
-
+/*
+ * Relative operator precedence. 
+ */
 int
 precedence_compare (char op1, char op2)
 {
   return operator_precedence (op1) - operator_precedence (op2);
 }
 
-/* ----------------------------------------------------------------- */
-/* Parse and translate a mathematical expression.  */
+
+/* ----------------------------------------------------------------- *\
+ * Parse and translate a mathematical expression.                    * 
+\* ----------------------------------------------------------------- */
+
+struct op
+{
+  int precedence;
+  void (*function) ();
+};
+ 
+typedef struct op OP;
+
+struct op KW_ARITH_OP_FNS[] =
+  {
+    { 1, pop_add },
+    { 1, pop_sub },
+    { 2, pop_mul },
+    { 2, pop_div }
+  };
+
+void
+expr (int p)
+{
+  term ();
+  while (is_op (Look))
+    {
+      OP *op = &KW_ARITH_OP_FNS[Look - PLUS];
+      if (op->precedence < p)
+        return;
+      push ();
+      GetChar ();
+      expr (op->precedence);
+      op->function ();
+    }
+}
 
 void
 expression (void)
 {
+  expr (0);
+/*
   char stack [16];
   const int stack_sz = sizeof (stack) / sizeof (stack[0]);
   int i = 0;
@@ -730,6 +771,7 @@ expression (void)
     {
       operator (stack [--i]);
     }
+*/
 }
 
 /* ----------------------------------------------------------------- */
