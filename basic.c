@@ -14,8 +14,8 @@ void epilogue ();
 /* ------------------------------------------------------------------ */
 
 char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
-  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88" "+\x89" "-\x90"
-  "*\x91" "/\x92";
+  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88" "+\x89" "-\x8a"
+  "*\x8b" "/\x8c";
 
 /* ------------------------------------------------------------------ */
 
@@ -29,8 +29,8 @@ char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
 #define THEN  -120
 #define PLUS  -119
 #define MINUS -118
-#define MUL   0x91
-#define DIV   0x92
+#define MUL   -117
+#define DIV   -116
 
 /* ------------------------------------------------------------------ */
 
@@ -707,6 +707,7 @@ precedence_compare (char op1, char op2)
  * Parse and translate a mathematical expression.                    * 
 \* ----------------------------------------------------------------- */
 
+/* Structure defining an arithmetic operator function. */
 struct op
 {
   int precedence;
@@ -715,6 +716,7 @@ struct op
  
 typedef struct op OP;
 
+/* Table of arithmetic keyword operators. */
 struct op KW_ARITH_OP_FNS[] =
   {
     { 1, pop_add },
@@ -723,10 +725,13 @@ struct op KW_ARITH_OP_FNS[] =
     { 2, pop_div }
   };
 
+/* Parse an arthmetic expression using the shunting yard 
+   algorithm.  If the next token is an operator of precedence
+   lower than P, the algorithm terminates.  */
 void
-expr (int p)
+arith_parse (int p)
 {
-  term ();
+  term (); /* Parse a term. */
   while (is_op (Look))
     {
       OP *op = &KW_ARITH_OP_FNS[Look - PLUS];
@@ -734,44 +739,16 @@ expr (int p)
         return;
       push ();
       GetChar ();
-      expr (op->precedence);
+      arith_parse (op->precedence);
       op->function ();
     }
 }
 
+/* Parse an expression. */
 void
 expression (void)
 {
-  expr (0);
-/*
-  char stack [16];
-  const int stack_sz = sizeof (stack) / sizeof (stack[0]);
-  int i = 0;
-
-  term ();
-
-  while (is_op (Look))
-    {
-      char op = Look;
-      GetChar ();
-      while (i > 0 && precedence_compare (op, stack[i-1]) <= 0)
-        {
-          operator (stack [--i]);
-        }
-      if (i >= stack_sz)
-        {
-          errx (EXIT_FAILURE, "operator stack overflow");
-        }
-      stack [i++] = op;
-      push ();
-      term ();
-    }
-
-  while (i > 0)
-    {
-      operator (stack [--i]);
-    }
-*/
+  arith_parse (0);
 }
 
 /* ----------------------------------------------------------------- */
