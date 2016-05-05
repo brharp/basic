@@ -915,7 +915,23 @@ void
 if_stmt ()
 {
   match (IF);
-  condition ();
+  expression ();
+  if (is_relop (Look))
+    {
+      push ();
+      switch (Look)
+        {
+          case '=':
+            equals ();
+            break;
+          case '<':
+            less_than ();
+            break;
+          case '>':
+            greater_than ();
+            break;
+        }
+    }
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
