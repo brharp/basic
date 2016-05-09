@@ -22,3 +22,6 @@ test: test.bas
 tags: $(SOURCES)
 	ctags $(SOURCES)
 
+csample: 
+	gcc -O0 -ansi -m64 -masm=intel -S test.c
+

@@ -916,25 +916,18 @@ if_stmt ()
 {
   match (IF);
   expression ();
-  if (is_relop (Look))
-    {
-      push ();
-      switch (Look)
-        {
-          case '=':
-            equals ();
-            break;
-          case '<':
-            less_than ();
-            break;
-          case '>':
-            greater_than ();
-            break;
-        }
-    }
+  op = get_relop ();
+  expression ();
+  compare ();
   match (THEN);
   match (GOTO);
   int lineno = get_number ();
+  switch (op)
+    {
+      case CMP_LE: branch_if_le (lineno); break;
+      case CMP_GE: branch_if_ge (lineno); break;
+    }
+
   branch_if (lineno);
 }
 
