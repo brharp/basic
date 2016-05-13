@@ -9,26 +9,22 @@
 /* ------------------------------------------------------------------ */
 /* Type Declarations */
 
-typedef struct symbol *SYMTAB;
-
-struct symbol
-  {
-    char *name;
-    struct symbol *next;
-  };
+typedef char SYMBOL[9];
+typedef SYMBOL SYMTAB[1000], *TABPTR;
 
 
-/* ------------------------------------------------------------------ */
 /* Variable Declarations */
 
-char look,           /* Lookahead character */
-     token,          /* Next token */
-     value[16];      /* Token text */
+char
+look,           /* Lookahead character */
+token,          /* Next token */
+value[16];      /* Token text */
 
-SYMTAB symbol_table = NULL;
+#define MAX_ENTRY 100
+
+SYMBOL st[MAX_ENTRY];	/* Symbol table */
 
 
-/* ------------------------------------------------------------------ */
 /* Keywords and Token Types */
 
 char *KEYWORDS =
@@ -59,76 +55,103 @@ next_char ()
   look = getchar ();
 }
 
-/* ------------------------------------------------------------------ */
+
+/* Last Error */
+
+char *e;
+
+
 /* Report an Error */
-/* ------------------------------------------------------------------ */
 
 void
-print_error (const char *s)
+error (const char *s)
 {
-  fprintf (stderr, "Error: %s\n", s);
+  if (s && *s)
+    fprintf (stderr, "%s: %s\n", e, s);
+  else
+    fprintf (stderr, "%s\n", e);
 }
   
-/* ------------------------------------------------------------------ */
+
 /* Report Error and Halt */
-/* ------------------------------------------------------------------ */
 
 void
-abort (const char *s)
+die (const char *s)
 {
-  print_error (s);
+  error (s);
   exit (EXIT_FAILURE);
 }
 
-/* ------------------------------------------------------------------ */
+
 /* Report What Was Expected */
-/* ------------------------------------------------------------------ */
 
 void
 expected (const char *s)
 {
-  char msg[32];
-  sprintf (msg, "%s Expected", s);
-  abort (msg);
+  e = "expected";
+  die (s);
 }
 
-/* Report an Undefined Identifier
- * ------------------------------------------------------------------ */
+
+/* Report an undefined identifier.  */
 
 void
 undefined (char *name)
 {
-  char msg[64];
-  snprintf (msg, sizeof (msg), "Undefined Identifier %s", name);
-  abort (msg);
+  e = "undefined identifier";
+  die (name);
 }
 
 
-/* Report a Duplicate Identifier */
+/* Report a duplicate identifier.  */
 
 void
 duplicate (const char *n)
 {
-  char msg[64];
-  snprintf (msg, sizeof (msg), "Duplicate Identifier %s", n);
-  abort (msg);
+  e = "duplicate identifier";
+  die (n);
 }
 
-int
-is_addop (char c)
+
+/* Report out of memory. */
+
+void
+out_of_memory ()
 {
-  return (c == '+' || c == '-' || c == '|');
+  e = "out of memory";
+  die (NULL);
 }
 
-/* ------------------------------------------------------------------ */
+
+/* Check to make sure the current token is an identifier. */
+
+void
+check_ident ()
+{
+  if (token != 'x')
+    expected ("identifier");
+}
+
+
+/* Recognize an add op. */
+
+bool
+is_addop (const char c)
+{
+  return (c == '+' || c == '-');
+}
+
+
+/* Recognize a mulop.  */
 
 int
 is_mulop (char c)
 {
-  return (c == '*' || c == '/' || c == '&');
+  return (c == '*' || c == '/');
 }
 
-/* ------------------------------------------------------------------ */
+
+/* Recognize a relational operator.  */
 
 bool
 is_relop (char c)
@@ -136,69 +159,63 @@ is_relop (char c)
   return (c == '<' || c == '>' || c == '=');
 }
 
-/* ------------------------------------------------------------------ */
 
-int 
-is_op (char c)
-{
-  return (is_addop (c) || is_mulop (c));
-}
-
-/*
- * ERROR UNIT
- */
-
-/* ------------------------------------------------------------------ */
+/* Skip over leading whitespace. */
 
 void
-syntax_error ()
+skip_white ()
 {
-  fprintf (stderr, "? Syntax Error\n");
-  exit (EXIT_FAILURE);
+  while (isspace (look))
+    next_char ();
 }
 
-/* ------------------------------------------------------------------ */
-
-void
-out_of_memory ()
-{
-  fprintf (stderr, "Out of memory\n");
-  exit (EXIT_FAILURE);
-}
-
-/* ------------------------------------------------------------------ */
 
 
-/* SYMBOL TABLE */
 
-/* ------------------------------------------------------------------ */
-/* The symbol table. */
+/* Table lookup. */
 
-void allot (char *);
-
-/* ------------------------------------------------------------------ */
-
-struct symbol *
-lookup (char *name)
+int
+lookup (TABPTR t, char *s, int n)
 {
-  struct symbol *sp;
-  for (sp = symbol_table; sp != NULL; sp = sp->next)
-    if (strcmp (sp->name, name) == 0)
-      break;
-  if (sp == NULL)
+  int found = 0;
+  int i = n;
+  while (i-- > 0 && !found)
     {
-      allot (name);
-      sp = calloc (1, sizeof (*sp));
-      if (sp == NULL)
-	out_of_memory ();
-      sp->name = strdup (name);
-      if (sp->name == NULL)
-	out_of_memory ();
-      sp->next = symbol_table;
-      symbol_table = sp;
+      if (strcmp (s, t[i]) == 0)
+        found = 1;
     }
-  return sp;
+  return i;
 }
+
+
+/* Locate a symbol in table. */
+/* Returns the index of the entry, zero if not present. */
+
+int
+locate (SYMBOL n)
+{
+  return lookup (st, n, n_entry);
+}
+
+
+/* Look for symbol in table. */
+
+int
+in_table (SYMBOL n)
+{
+  return (locate (n) != -1)
+}
+
+
+/* Report error if identifier is undefined. */
+
+void
+check_table (SYMBOL n)
+{
+  if (! in_table (n))
+    undefined (n);
+}
+
 
 
 
