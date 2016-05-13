@@ -5,17 +5,41 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-/* ------------------------------------------------------------------ */
-
-void prologue ();
-void epilogue ();
 
 /* ------------------------------------------------------------------ */
+/* Type Declarations */
 
-char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
-  "OR\x85" "AND\x86" "NOT\x87" "THEN\x88";
+typedef struct symbol *SYMTAB;
+
+struct symbol
+  {
+    char *name;
+    struct symbol *next;
+  };
+
 
 /* ------------------------------------------------------------------ */
+/* Variable Declarations */
+
+char look,           /* Lookahead character */
+     token,          /* Next token */
+     value[16];      /* Token text */
+
+SYMTAB symbol_table = NULL;
+
+
+/* ------------------------------------------------------------------ */
+/* Keywords and Token Types */
+
+char *KEYWORDS =
+  "IF"   "\x81"
+  "ELSE" "\x82"
+  "LET"  "\x83"
+  "GOTO" "\x84"
+  "OR"   "\x85"
+  "AND"  "\x86"
+  "NOT"  "\x87"
+  "THEN" "\x88";
 
 #define IF   -127
 #define ELSE -126
@@ -27,6 +51,68 @@ char *KEYWORDS = "IF\x81" "ELSE\x82" "LET\x83" "GOTO\x84"
 #define THEN -120
 
 /* ------------------------------------------------------------------ */
+/* Read Next Character From Input Stream */
+
+int
+next_char ()
+{
+  look = getchar ();
+}
+
+/* ------------------------------------------------------------------ */
+/* Report an Error */
+/* ------------------------------------------------------------------ */
+
+void
+print_error (const char *s)
+{
+  fprintf (stderr, "Error: %s\n", s);
+}
+  
+/* ------------------------------------------------------------------ */
+/* Report Error and Halt */
+/* ------------------------------------------------------------------ */
+
+void
+abort (const char *s)
+{
+  print_error (s);
+  exit (EXIT_FAILURE);
+}
+
+/* ------------------------------------------------------------------ */
+/* Report What Was Expected */
+/* ------------------------------------------------------------------ */
+
+void
+expected (const char *s)
+{
+  char msg[32];
+  sprintf (msg, "%s Expected", s);
+  abort (msg);
+}
+
+/* Report an Undefined Identifier
+ * ------------------------------------------------------------------ */
+
+void
+undefined (char *name)
+{
+  char msg[64];
+  snprintf (msg, sizeof (msg), "Undefined Identifier %s", name);
+  abort (msg);
+}
+
+
+/* Report a Duplicate Identifier */
+
+void
+duplicate (const char *n)
+{
+  char msg[64];
+  snprintf (msg, sizeof (msg), "Duplicate Identifier %s", n);
+  abort (msg);
+}
 
 int
 is_addop (char c)
@@ -81,29 +167,13 @@ out_of_memory ()
 }
 
 /* ------------------------------------------------------------------ */
-
-void
-undefined (char *name)
-{
-  fprintf (stderr, "Undefined variable '%s'\n", name);
-  exit (EXIT_FAILURE);
-}
 
 
 /* SYMBOL TABLE */
 
 /* ------------------------------------------------------------------ */
-
-struct symbol
-{
-  char *name;
-  struct symbol *next;
-};
-
-/* ------------------------------------------------------------------ */
 /* The symbol table. */
 
-static struct symbol *symbol_table = NULL;
 void allot (char *);
 
 /* ------------------------------------------------------------------ */
@@ -233,9 +303,6 @@ Dump (char *s)
 
 /* ------------------------------------------------------------------ */
 
-int Look;
-
-/* ------------------------------------------------------------------ */
 /* Gets a non-blank line from stdin. */
 
 void
@@ -250,26 +317,6 @@ get_line (char *s, int size)
       fprintf (stderr, "%d: %s\n", ++line_number, s);
     }
   while (!strcspn (s, " \t\n"));
-}
-
-/* ------------------------------------------------------------------ */
-
-int
-GetChar ()
-{
-  static char LineBuffer[80];
-  static int LinePos = 0;
-  static int LineLength = 0;
-  if (!(LinePos < LineLength))
-    {
-      get_line (LineBuffer, sizeof (LineBuffer) - 1);
-      Tokenize (LineBuffer);
-      Dump (LineBuffer);
-      LineLength = strlen (LineBuffer);
-      LinePos = 0;
-    }
-  Look = LineBuffer[LinePos++];
-  return 1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -315,13 +362,6 @@ match (char c)
 }
 
 /* ------------------------------------------------------------------ */
-
-void
-Expected (char *what)
-{
-  printf ("Expected %s\n", what);
-  exit (EXIT_FAILURE);
-}
 
 /* ------------------------------------------------------------------ */
 
