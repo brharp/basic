@@ -6,10 +6,15 @@
 #include <stdbool.h>
 
 
-/* ------------------------------------------------------------------ */
+/* Constant Declarations */
+
+#define MAX_NAME  8
+#define MAX_ENTRY 100
+
+
 /* Type Declarations */
 
-typedef char SYMBOL[9];
+typedef char SYMBOL[MAX_NAME+1];
 typedef SYMBOL SYMTAB[1000], *TABPTR;
 
 
@@ -18,14 +23,38 @@ typedef SYMBOL SYMTAB[1000], *TABPTR;
 char
 look,           /* Lookahead character */
 token,          /* Next token */
-value[16];      /* Token text */
+value[MAX_NAME*2+1];      /* Token text */
 
-#define MAX_ENTRY 100
-
-SYMBOL st[MAX_ENTRY];	/* Symbol table */
+static SYMBOL st[MAX_ENTRY];	/* Symbol table */
+int n_entry;
 
 
 /* Keywords and Token Types */
+
+const SYMBOL kw_list[] =
+  {
+    "IF",
+    "ELSE",
+    "LET",
+    "GOTO",
+    "OR",
+    "AND",
+    "THEN",
+  };
+
+#define NKW (sizeof (kw_list) / sizeof (kw_list[0]))
+
+const char kw_code[] =
+  "ielgoat";
+
+#define IF   128
+#define ELSE 129
+#define LET  130
+#define GOTO 131
+#define OR   132
+#define AND  134
+#define NOT  135
+#define THEN 136
 
 char *KEYWORDS =
   "IF"   "\x81"
@@ -37,16 +66,8 @@ char *KEYWORDS =
   "NOT"  "\x87"
   "THEN" "\x88";
 
-#define IF   -127
-#define ELSE -126
-#define LET  -125
-#define GOTO -124
-#define OR   -123
-#define AND  -122
-#define NOT  -121
-#define THEN -120
 
-/* ------------------------------------------------------------------ */
+
 /* Read Next Character From Input Stream */
 
 int
@@ -56,20 +77,12 @@ next_char ()
 }
 
 
-/* Last Error */
-
-char *e;
-
-
 /* Report an Error */
 
 void
 error (const char *s)
 {
-  if (s && *s)
-    fprintf (stderr, "%s: %s\n", e, s);
-  else
-    fprintf (stderr, "%s\n", e);
+  fprintf (stderr, "%s\n", s);
 }
   
 
@@ -88,8 +101,8 @@ die (const char *s)
 void
 expected (const char *s)
 {
-  e = "expected";
-  die (s);
+  fprintf (stderr, "%s ", s);
+  die ("expected");
 }
 
 
@@ -98,18 +111,18 @@ expected (const char *s)
 void
 undefined (char *name)
 {
-  e = "undefined identifier";
-  die (name);
+  fprintf (stderr, "%s: ", name);
+  die ("undefined identifier");
 }
 
 
 /* Report a duplicate identifier.  */
 
 void
-duplicate (const char *n)
+duplicate (const char *name)
 {
-  e = "duplicate identifier";
-  die (n);
+  fprintf (stderr, "%s: ", name);
+  die ("duplicate identifier");
 }
 
 
@@ -118,8 +131,7 @@ duplicate (const char *n)
 void
 out_of_memory ()
 {
-  e = "out of memory";
-  die (NULL);
+  die ("out of memory");
 }
 
 
@@ -169,6 +181,7 @@ skip_white ()
     next_char ();
 }
 
+
 
 
 
@@ -181,7 +194,7 @@ lookup (TABPTR t, char *s, int n)
   int i = n;
   while (i-- > 0 && !found)
     {
-      if (strcmp (s, t[i]) == 0)
+      if (strcmp (s, t[i].name) == 0)
         found = 1;
     }
   return i;
@@ -203,7 +216,7 @@ locate (SYMBOL n)
 int
 in_table (SYMBOL n)
 {
-  return (locate (n) != -1)
+  return (locate (n) != -1);
 }
 
 
@@ -214,6 +227,111 @@ check_table (SYMBOL n)
 {
   if (! in_table (n))
     undefined (n);
+}
+
+
+/* Add a new entry to the symbol table. */
+
+void
+add_entry (SYMBOL n)
+{
+  check_dup (n);
+  if (n_entry == MAX_ENTRY)
+    die ("symbol table full");
+  st[n_entry] = strdup (n);
+  ++n_entry;
+}
+
+
+
+
+
+/* Get an identifier. */
+ 
+void
+get_name ()
+{
+  skip_white ();
+  if (!isalpha (Look))
+    expected ("identifier");
+  token = 'x';
+  int length = 0;
+  while (isalnum (look) && len < MAX_NAME)
+    {
+      name[length] = toupper (look);
+      ++length;
+      next_char ();
+    }
+  name[length] = '\0';
+}
+
+
+/* Get a number.  */
+
+int
+get_number ()
+{
+  skip_white ();
+  if (!isdigit (look))
+    expected ("integer");
+  token = TT_NUMBER;
+  int n = 0;
+  while (isdigit (look) && n < MAX_VALUE)
+    {
+      value[n] = look;
+      next_char ();
+      ++n;
+    }
+  value[n] = '\0';
+}
+
+
+/* Get an operator. */
+
+void
+get_op ()
+{
+  skip_white ();
+  token = look;
+  value[0] = look;
+  value[1] = '\0';
+  next_char ();
+}
+
+
+/* Get next input token. */
+
+void
+next ()
+{
+  skip_white ();
+  if (isalpha (look))
+    get_name ();
+  else if (isdigit (look))
+    get_number ();
+  else
+    get_op ();
+}
+
+
+/* Scan the current identifier for keywords. */
+
+void
+scan ()
+{
+  if (token == TT_IDENT)
+    token = kw_code[lookup (kw_list, value, NKW)];
+}
+
+
+/* Match a specific input string. */
+
+void
+match_string (const char *x)
+{
+  if (strcmp (value, x) != 0)
+    expected (x);
+  next ();
 }
 
 
@@ -382,39 +500,8 @@ match (char c)
 
 /* ------------------------------------------------------------------ */
 
-char *
-get_var ()
-{
-  char name[8];
-  int len = 0;
-  if (!isalpha (Look))
-    syntax_error ();
-  while (isalnum (Look))
-    {
-      name[len++] = toupper (Look);
-      GetChar ();
-    }
-  name[len] = '\0';
-  struct symbol *sp = lookup (name);
-  return sp->name;
-}
-
 /* ------------------------------------------------------------------ */
 
-int
-get_number ()
-{
-  char s[16];
-  char *p = s;
-  if (!isdigit (Look))
-    Expected ("Integer");
-  while (isdigit (Look))
-    {
-      *p++ = Look;
-      GetChar ();
-    }
-  return atoi (s);
-}
 
 
 /* ----------------------------------------------------------------- */
