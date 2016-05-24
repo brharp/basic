@@ -132,23 +132,101 @@ lookup (char *name)
 
 
 
-/*
- * THE TOKENIZER
- *
- * The tokenizer pre-parses the line buffer into tokens. It replaces
- * keywords from the input with single character tokens, and removes
- * spaces. Quoted strings are not tokenized.
- *
- * Tokenizing input simplifies parsing later, because we can assume
- * that any input starting with an alphabetic character is an
- * identifier (subroutine, function, or variable) without having to
- * check for keywords, and we can recognize keywords with a switch
- * statement or simple comparison.
- *
- */
+static char name[8];
+static int  name_len = 0;
 
-/* ------------------------------------------------------------------ */
-/* Tokenize a string. */
+/* Get an identifier. */
+
+void
+get_name ()
+{
+  if (!isalpha (Look))
+    syntax_error ();
+  token = 'x';
+  name_len = 0;
+  while (isalnum (Look))
+    {
+      name[name_len++] = toupper (Look);
+      GetChar ();
+    }
+  name[name_len] = '\0';
+}
+
+
+/* Copy a name token to the line buffer. */
+
+void
+put_name ()
+{
+  /* The name was scanned from the line buffer,
+     so all we do is advance output pointer by
+     name_len characters. */
+  pcout += name_len;
+}
+
+
+/* Get a number. */
+
+int
+get_number ()
+{
+  char s[16];
+  char *p = s;
+  if (!isdigit (Look))
+    Expected ("Integer");
+  while (isdigit (Look))
+    {
+      *p++ = Look;
+      GetChar ();
+    }
+  return atoi (s);
+}
+
+get_token ()
+{
+  skip_white ();
+  if (isalpha (look))
+    get_name ();
+  else if (isdigit (look))
+    get_number ();
+  else
+    get_op ();
+}
+
+/* Copy a token to the line buffer. */
+
+void
+put_token ()
+{
+  switch (token)
+    {
+      case TT_NAME:
+        put_name ();
+        break;
+      case TT_NUMBER:
+        put_number ();
+        break;
+      default:
+        put_char (token);
+        break;
+    }
+}
+
+void
+tokenize ()
+{
+  while (get_token ())
+    {
+      if (token == TT_NAME)
+        keyword_scan ();
+      if (token == '"')
+        free_copy ();
+      else if (token == 'x')
+        put_name ();
+      else
+        put_char (token);
+    }
+}
 
 void
 Tokenize (char *s)
@@ -343,21 +421,6 @@ get_var ()
 }
 
 /* ------------------------------------------------------------------ */
-
-int
-get_number ()
-{
-  char s[16];
-  char *p = s;
-  if (!isdigit (Look))
-    Expected ("Integer");
-  while (isdigit (Look))
-    {
-      *p++ = Look;
-      GetChar ();
-    }
-  return atoi (s);
-}
 
 
 /* ----------------------------------------------------------------- */
