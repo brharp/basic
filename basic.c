@@ -153,18 +153,6 @@ get_name ()
 }
 
 
-/* Copy a name token to the line buffer. */
-
-void
-put_name ()
-{
-  /* The name was scanned from the line buffer,
-     so all we do is advance output pointer by
-     name_len characters. */
-  pcout += name_len;
-}
-
-
 /* Get a number. */
 
 int
@@ -182,43 +170,50 @@ get_number ()
   return atoi (s);
 }
 
-get_token ()
-{
-  skip_white ();
-  if (isalpha (look))
-    get_name ();
-  else if (isdigit (look))
-    get_number ();
-  else
-    get_op ();
-}
 
-/* Copy a token to the line buffer. */
+/* Get the next input token. */
 
 void
-put_token ()
+next_token ()
 {
-  switch (token)
-    {
-      case TT_NAME:
-        put_name ();
-        break;
-      case TT_NUMBER:
-        put_number ();
-        break;
-      default:
-        put_char (token);
-        break;
-    }
+  skip_white ();
+  if (isalpha (look)) get_name ();
+  else if (isdigit (look)) get_number ();
+  else get_op ();
 }
+
+
+
+/* Compare input to keyword list. */
+
+int
+kw_compare (char *s)
+{
+  i = 0;
+  for (i = 0; i < nkw; i++)
+    {
+      if (strcmp (s, KEYWORDS[i]))
+        return 128+i;
+    }
+  return s[0];
+}
+
+
+/* Scan the current identifier for keywords. */
+
+scan ()
+{
+  if (token == 'x')
+    token = kw_compare ();
+}
+
 
 void
 tokenize ()
 {
   while (get_token ())
     {
-      if (token == TT_NAME)
-        keyword_scan ();
+      scan ();
       if (token == '"')
         free_copy ();
       else if (token == 'x')
@@ -1138,7 +1133,12 @@ main (int argc, char *argv[])
   init ();
   //prologue ();
   //program ();
-  expression();
+  //expression();
+  while (token != 'e')
+    {
+      next_token ();
+      printf ("%c %s\n", token, value);
+    }
   return 0;
 }
 
