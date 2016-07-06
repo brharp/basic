@@ -26,15 +26,15 @@ void scan (void);
 
 /* Constants */
 
-const char *keywords[] = { "LET", "IF" };
-const char keycodes[] = "xli"; 
+const char *keywords[] = { "LET", "IF", "THEN" };
+const char keycodes[] = "xlit"; 
 
 /* Variables */
 
-int lookahead;
-int tokentype;
+int  lookahead;
+int  tokentype;
 char tokentext[TOKENMAX+1];
-int tokenlength;
+int  tokenlength;
 
 void syntaxerror (void)
 {
@@ -76,8 +76,9 @@ void getnum (void)
   while (isdigit (lookahead))
     {
       if (tokenlength > TOKENMAX)
-        syntaxerror ();
-
+        {
+          syntaxerror ();
+        }
       tokentext[tokenlength] = lookahead;
       tokenlength++;
       nextchar ();
@@ -131,14 +132,149 @@ void scan (void)
     tokentype = kwsearch ();
 }
 
+void match (int type)
+{
+  if (tokentype != type)
+    syntaxerror ();
+  next ();
+}
+
+void label (void)
+{
+  printf ("L%s:\n", tokentext);
+  next ();
+}
+
+void factor (void)
+{
+  if (tokentype == 'x')
+    {
+      printf ("\tmov\t%%rax, %s\n", tokentext);
+      match ('x');
+    }
+  else
+    {
+      printf ("\tmov\t%%rax, %s\n", tokentext);
+      match ('#');
+    }
+}
+
+void term (void)
+{
+  factor ();
+  while (tokentype == '*' || tokentype == '/')
+    {
+      printf ("\tpush\t%%rax\n");
+      switch (tokentype)
+        {
+          case '*':
+            printf ("\tpop\t%%rdx\n");
+            printf ("\timul\t%%rax, %%rdx\n");
+            break;
+          case '/':
+            printf ("\tmov\t%%rcx, %%rax\n");
+            printf ("\tpop\t%%rax\n");
+            printf ("\tmov\t%%rdx, %%rax\n");
+            printf ("\tsar\t%%rdx, 63\n");
+            printf ("\tidiv\t%%rcx\n");
+            break;
+        }
+    }
+}
+
+void expression (void)
+{
+  term ();
+  while (tokentype == '+' || tokentype == '-')
+    {
+      printf ("\tpush\t%%rax\n");
+      switch (tokentype)
+        {
+          case '+':
+            match ('+');
+            term ();
+            printf ("\tpop\t%%rdx\n");
+            printf ("\tadd\t%%rax, %%rdx\n");
+            break;
+          case '-':
+            match ('-');
+            term ();
+            printf ("\tmov\t%%rdx, %%rax\n");
+            printf ("\tpop\t%%rax\n");
+            printf ("\tsub\t%%rax, %%rdx\n");
+            break;
+        }
+    }
+}
+
+void assignment (void)
+{
+  if (tokentype == 'l')
+    match ('l');
+  char *var = strdup (tokentext);
+  match ('x');
+  match ('=');
+  expression ();
+  printf ("\tmov\t%s, %%rax\n", var); 
+  free (var);
+}
+
+void statement (void);
+
+void conditional (void)
+{
+  static int j = 100;
+  match ('i');
+  expression ();
+  printf ("\tpush\t%%rax\n");
+  if (tokentype == '<' || tokentype == '>' || tokentype == '=')
+    {
+      char op = tokentype;
+      match (op);
+      expression ();
+      printf ("\tpop\t%%rdx\n");
+      printf ("\tcmp\t%%rax, %%rdx\n");
+      switch (op)
+        {
+          case '<':
+            printf ("\tjlt\tJ%d\n", j);
+            break;
+          case '>':
+            printf ("\tjgt\tJ%d\n", j);
+            break;
+          case '=':
+            printf ("\tjeq\tJ%d\n", j);
+            break;
+        }
+      scan ();
+      match ('t');
+      statement ();
+      printf ("J%d:\n", j++);
+    }
+}
+
+void statement (void)
+{
+  if (tokentype == '#')
+    label ();
+  scan ();
+  switch (tokentype)
+    {
+      case 'i':
+        conditional ();
+        break;
+      default:
+        assignment ();
+        break;
+    }
+}
+
 int main (int argc, char *argv[])
 {
   init ();
   while (lookahead != EOF)
     {
-      scan ();
-      printf ("%c\t%s\n", tokentype, tokentext);
-      next ();
+      statement ();
     }
   return 0;
 }
