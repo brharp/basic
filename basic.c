@@ -140,10 +140,13 @@ void match (int type)
   next ();
 }
 
-void label (void)
+/* Parse and translate a line number. */
+void linenumber (void)
 {
+  /* Generate a line number label. */
   printf ("L%s:\n", tokentext);
-  next ();
+  /* Match line number. */
+  match ('#');
 }
 
 void factor (void)
@@ -222,79 +225,118 @@ void assignment (void)
 
 void statement (void);
 
+/* Parse and translate a conditional (IF) statement. */
 void conditional (void)
 {
+  /* Conditional jump label counter. */
   static int j = 100;
-  match ('i');
+  /* Match the "IF" token. */
+  match ('i'); 
+  /* Match the first expression. */
   expression ();
+  /* Push first value on the stack. */
   printf ("\tpush\t%%rax\n");
+  /* Match relational operator. */
   if (tokentype == '<' || tokentype == '>' || tokentype == '=')
     {
-      char *cmp;
+      /* Conditional jump instruction. */
+      char *jcc;
+      /* Match 2-character operators such as <=, >=, <>, etc. */
       switch (tokentype)
         {
+          /* Less then, less than or equal, not equal. */
           case '<':
+            /* Match first character. */
             match ('<');
+            /* Match (optional) second character. */
             switch (tokentype)
               {
-                case '>': match ('>'); cmp = "jz"; break;
-                case '=': match ('='); cmp = "jnle"; break;
-                default: cmp = "jnl"; break;
+                /* Not equal (<>). */
+                case '>': match ('>'); jcc = "jz"; break;
+                /* Less than or equal (<=). */
+                case '=': match ('='); jcc = "jnle"; break;
+                /* Less than (<). */
+                default: jcc = "jnl"; break;
               }
             break;
+          /* Greater than, greater than or equal, not equal. */
           case '>':
+            /* Match first character. */
             match ('>');
+            /* Match (optional) second character. */
             switch (tokentype)
               {
-                case '<': match ('<'); cmp = "jz"; break;
-                case '=': match ('='); cmp = "jnge"; break;
-                default: cmp = "jng"; break;
+                /* Not equal (><). */
+                case '<': match ('<'); jcc = "jz"; break;
+                /* Greater than or equal (>=). */
+                case '=': match ('='); jcc = "jnge"; break;
+                /* Greater than (>). */
+                default: jcc = "jng"; break;
               }
             break;
+          /* Equal, less than or equal, greater or equal. */
           case '=':
+            /* Match first character. */
             match ('=');
+            /* Match (optional) second character. */
             switch (tokentype)
               {
-                case '<': match ('<'); cmp = "jnle"; break;
-                case '>': match ('>'); cmp = "jnge"; break;
-                default: cmp = "jne"; break;
+                /* Less than or equal (=<). */
+                case '<': match ('<'); jcc = "jnle"; break;
+                /* Greater than or equal (=>). */
+                case '>': match ('>'); jcc = "jnge"; break;
+                /* Equal (=). */
+                default: jcc = "jne"; break;
               }
             break;
         }
+      /* Match second expression in comparison. */
       expression ();
+      /* Pop first value into %rdx. */
       printf ("\tpop\t%%rdx\n");
-      printf ("\tcmp\t%%rax, %%rdx\n");
-      printf ("\t%s\tJ%d\n", cmp, j);
+      /* Compare expression values. */
+      printf ("\tcmp\t%%rdx, %%rax\n");
+      /* If the comparison fails, jump over the consequent. jcc is a
+         conditional jump instruction set above (jne, jnge, etc.). */
+      printf ("\t%s\tJ%d\n", jcc, j);
+      /* Match "THEN" */
       match ('t');
+      /* Compile the consequent; the statement to execute if the 
+      condition is true. */
       statement ();
+      /* Target label of conditional jump instruction. */
       printf ("J%d:\n", j++);
     }
 }
 
+/* Parse and translate a branch (aka GOTO). */
 void branch (void)
 {
-  match ('g'); // GOTO
+  /* Match "GOTO" token. */
+  match ('g');
+  /* Convert line number token to int. */
   int lineno = atoi (tokentext);
-  match ('#'); // <LINE NUM>
+  /* Match line number. */
+  match ('#');
+  /* Jump to line number label. */
   printf ("\tjmp\tL%d\n", lineno);
 }
 
+/* Parse and translate a statement. */
 void statement (void)
 {
+  /* Statements may begin with a line number. */
   if (tokentype == '#')
-    label ();
-  scan ();
+    linenumber ();
+  /* Switch on first token. */
   switch (tokentype)
     {
-      case 'g':
-        branch ();
-        break;
-      case 'i':
-        conditional ();
-        break;
-      default:
-        assignment ();
-        break;
+      /* GOTO */
+      case 'g': branch (); break;
+      /* IF */
+      case 'i': conditional (); break;
+      /* LET */
+      default: assignment (); break;
     }
 }
 

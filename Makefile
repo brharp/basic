@@ -16,8 +16,8 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $< -o $@
 
 test: test.bas
-	./basic < test.bas #> test.s
-	#$(CC) -g test.s
+	./basic < test.bas > test.s
+	$(CC) -g test.s
 
 tags: $(SOURCES)
 	ctags $(SOURCES)
