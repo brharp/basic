@@ -327,7 +327,10 @@ void statement (void)
 {
   /* Statements may begin with a line number. */
   if (tokentype == '#')
-    linenumber ();
+    {
+      /* Match line number. */
+      linenumber ();
+    }
   /* Switch on first token. */
   switch (tokentype)
     {
@@ -340,13 +343,37 @@ void statement (void)
     }
 }
 
+/* Standard prologue. */
+void prologue (void)
+{
+  printf ("\t.intel_syntax\n");
+  printf ("\t.globl main\n");
+  printf ("main:\n");
+  printf ("\tpush\t%%rbp\n");
+  printf ("\tmov\t%%rbp, %%rsp\n");
+  printf ("\tsub\t%%rsp, 16\n");
+  printf ("\tmov\tDWORD PTR [%%rbp-4], %%edi\n");
+  printf ("\tmov\tQWORD PTR [%%rbp-16], %%rsi\n");
+}
+
+/* Standard epilogue. */
+void epilogue (void)
+{
+  printf ("\tmov\t%%eax, 0\n");
+  printf ("\tleave\n");
+  printf ("\tret\n");
+}
+
+/* Main program. */
 int main (int argc, char *argv[])
 {
   init ();
+  prologue ();
   while (lookahead != EOF)
     {
       statement ();
     }
+  epilogue ();
   return 0;
 }
 
