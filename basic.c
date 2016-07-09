@@ -26,8 +26,8 @@ void scan (void);
 
 /* Constants */
 
-const char *keywords[] = { "LET", "IF", "THEN" };
-const char keycodes[] = "xlit"; 
+const char *keywords[] = { "LET", "IF", "THEN", "GOTO" };
+const char keycodes[] = "xlitg"; 
 
 /* Variables */
 
@@ -101,6 +101,7 @@ void next (void)
   if (isalpha (lookahead)) getname ();
   else if (isdigit (lookahead)) getnum ();
   else getop ();
+  scan ();
 }
 
 void init (void)
@@ -229,28 +230,53 @@ void conditional (void)
   printf ("\tpush\t%%rax\n");
   if (tokentype == '<' || tokentype == '>' || tokentype == '=')
     {
-      char op = tokentype;
-      match (op);
+      char *cmp;
+      switch (tokentype)
+        {
+          case '<':
+            match ('<');
+            switch (tokentype)
+              {
+                case '>': match ('>'); cmp = "jz"; break;
+                case '=': match ('='); cmp = "jnle"; break;
+                default: cmp = "jnl"; break;
+              }
+            break;
+          case '>':
+            match ('>');
+            switch (tokentype)
+              {
+                case '<': match ('<'); cmp = "jz"; break;
+                case '=': match ('='); cmp = "jnge"; break;
+                default: cmp = "jng"; break;
+              }
+            break;
+          case '=':
+            match ('=');
+            switch (tokentype)
+              {
+                case '<': match ('<'); cmp = "jnle"; break;
+                case '>': match ('>'); cmp = "jnge"; break;
+                default: cmp = "jne"; break;
+              }
+            break;
+        }
       expression ();
       printf ("\tpop\t%%rdx\n");
       printf ("\tcmp\t%%rax, %%rdx\n");
-      switch (op)
-        {
-          case '<':
-            printf ("\tjlt\tJ%d\n", j);
-            break;
-          case '>':
-            printf ("\tjgt\tJ%d\n", j);
-            break;
-          case '=':
-            printf ("\tjeq\tJ%d\n", j);
-            break;
-        }
-      scan ();
+      printf ("\t%s\tJ%d\n", cmp, j);
       match ('t');
       statement ();
       printf ("J%d:\n", j++);
     }
+}
+
+void branch (void)
+{
+  match ('g'); // GOTO
+  int lineno = atoi (tokentext);
+  match ('#'); // <LINE NUM>
+  printf ("\tjmp\tL%d\n", lineno);
 }
 
 void statement (void)
@@ -260,6 +286,9 @@ void statement (void)
   scan ();
   switch (tokentype)
     {
+      case 'g':
+        branch ();
+        break;
       case 'i':
         conditional ();
         break;
