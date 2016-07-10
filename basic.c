@@ -20,13 +20,13 @@ void next (void);
 void nextchar (void);
 void skipspace (void);
 void syntaxerror (void);
-int lookup (const char *table[], char *key, int n);
+//int lookup (const char *table[], char *key, int n);
 int kwsearch (void);
 void scan (void);
 
 /* Constants */
 
-const char *keywords[] = { "LET", "IF", "THEN", "GOTO" };
+char *keywords[] = { "LET", "IF", "THEN", "GOTO" };
 const char keycodes[] = "xlitg"; 
 
 /* Variables */
@@ -36,10 +36,15 @@ int  tokentype;
 char tokentext[TOKENMAX+1];
 int  tokenlength;
 
+void die (const char *msg)
+{
+  fprintf (stderr, "%s\n", msg);
+  exit (EXIT_FAILURE);
+}
+
 void syntaxerror (void)
 {
-  fprintf (stderr, "\nSyntax error\n");
-  exit (EXIT_FAILURE);
+  die ("syntax error");
 }
 
 void nextchar (void)
@@ -111,7 +116,7 @@ void init (void)
 }
 
 
-int lookup (const char *table[], char *key, int n)
+int lookup (char *table[], char *key, int n)
 {
   int i = n;
   while (i--)
@@ -211,16 +216,39 @@ void expression (void)
     }
 }
 
+
+char *symboltable[128];
+int symbolcount;
+
 void assignment (void)
 {
+  /* Match (optional) "LET" keyword. */
   if (tokentype == 'l')
     match ('l');
-  char *var = strdup (tokentext);
+  /* Syntax check. */
+  if (tokentype != 'x')
+    syntaxerror ();
+  /* Search for variable in symbol table. */
+  int i = lookup (symboltable, tokentext, symbolcount);
+  /* If not defined, insert into table. */
+  if (i < 0)
+    {
+      i = symbolcount;
+      /* Allocate space for variable. */
+      printf ("\t.comm\t%s, 8\n", tokentext);
+      /* Define symbol. */
+      if (i >= countof(symboltable))
+        die ("symbol table full");
+      /* Add entry to table. */
+      symboltable[i] = strdup (tokentext);
+      /* Increment symbol table counter. */
+      ++symbolcount;
+    }
+  /* Match variable. */
   match ('x');
   match ('=');
   expression ();
-  printf ("\tmov\t%s, %%rax\n", var); 
-  free (var);
+  printf ("\tmov\t%s, %%rax\n", symboltable[i]); 
 }
 
 void statement (void);
