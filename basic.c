@@ -26,8 +26,9 @@ void scan (void);
 
 /* Constants */
 
-char *keywords[] = { "LET", "IF", "THEN", "GOTO" };
-const char keycodes[] = "xlitg"; 
+char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
+  "STEP", "NEXT" };
+const char keycodes[] = "xlitgfosn"; 
 
 /* Variables */
 
@@ -220,11 +221,8 @@ void expression (void)
 char *symboltable[128];
 int symbolcount;
 
-void assignment (void)
+char *identifier (void)
 {
-  /* Match (optional) "LET" keyword. */
-  if (tokentype == 'l')
-    match ('l');
   /* Syntax check. */
   if (tokentype != 'x')
     syntaxerror ();
@@ -246,9 +244,18 @@ void assignment (void)
     }
   /* Match variable. */
   match ('x');
+  return symboltable[i];
+}
+
+void assignment (void)
+{
+  /* Match (optional) "LET" keyword. */
+  if (tokentype == 'l')
+    match ('l');
+  char *id = identifier ();
   match ('=');
   expression ();
-  printf ("\tmov\t%s, %%rax\n", symboltable[i]); 
+  printf ("\tmov\t%s, %%rax\n", id); 
 }
 
 void statement (void);
@@ -350,24 +357,63 @@ void branch (void)
   printf ("\tjmp\tL%d\n", lineno);
 }
 
+/* Parse and translate a (FOR) loop. */
+void loop (void)
+{
+  void block (void);
+  static int counter = 0;
+  int label = counter++;
+  match ('f');
+  char *id = identifier ();
+  match ('=');
+  expression ();
+  printf ("\tmov\t%s, %%rax\n", id);
+  match ('o');
+  expression ();
+  printf ("\tpush\t%%rax\n");
+  printf ("\tjmp\tT%d\n", label);
+  printf ("N%d:\n", label);
+  block ();
+  match ('n');
+  if (tokentype != 'x' || strcmp (id, tokentext) != 0)
+    syntaxerror ();
+  match ('x');
+  printf ("\tmov\t%%rax, %s\n", id);
+  printf ("\tadd\t%%rax, 1\n");
+  printf ("\tmov\t%s, %%rax\n", id);
+  printf ("T%d:\n", label);
+  printf ("\tmov\t%%rax, %s\n", id);
+  printf ("\tcmp\t%%rax, [%%rsp]\n");
+  printf ("\tjl\tN%d\n", label);
+  printf ("\tadd\t%%rsp, 8\n");
+}
+
 /* Parse and translate a statement. */
 void statement (void)
 {
   /* Statements may begin with a line number. */
   if (tokentype == '#')
-    {
-      /* Match line number. */
-      linenumber ();
-    }
+    /* Match line number. */
+    linenumber ();
   /* Switch on first token. */
   switch (tokentype)
     {
-      /* GOTO */
-      case 'g': branch (); break;
-      /* IF */
-      case 'i': conditional (); break;
-      /* LET */
-      default: assignment (); break;
+      /* GOTO */ case 'g': branch (); break;
+      /* IF   */ case 'i': conditional (); break;
+      /* FOR  */ case 'f': loop (); break;
+      /* NEXT */ case 'n': break;
+      /* LET  */ default: assignment (); break;
+    }
+}
+
+/* Parse and translate a block of statements. */
+void block (void)
+{
+  while (lookahead != EOF)
+    {
+      statement ();
+      if (tokentype == 'n')
+        break;
     }
 }
 
@@ -397,10 +443,7 @@ int main (int argc, char *argv[])
 {
   init ();
   prologue ();
-  while (lookahead != EOF)
-    {
-      statement ();
-    }
+  block ();
   epilogue ();
   return 0;
 }

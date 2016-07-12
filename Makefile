@@ -22,3 +22,6 @@ test: test.bas
 tags: $(SOURCES)
 	ctags $(SOURCES)
 
+.c.s:
+	$(CC) -Wall -O0 -ansi -m64 -masm=intel -S $< -o $@
+
