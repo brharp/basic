@@ -27,8 +27,8 @@ void scan (void);
 /* Constants */
 
 char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
-  "STEP", "NEXT" };
-const char keycodes[] = "xlitgfosn"; 
+  "STEP", "NEXT", "PRINT" };
+const char keycodes[] = "xlitgfosnp"; 
 
 /* Variables */
 
@@ -388,6 +388,22 @@ void loop (void)
   printf ("\tadd\t%%rsp, 8\n");
 }
 
+/* Print variable value. */
+void print (void)
+{
+  match ('p');
+  if (tokentype != 'x')
+    syntaxerror ();
+  char *var = tokentext;
+  printf ("\tmov\t%%rax, 1\n");
+  printf ("\tmov\t%%rdi, 1\n");
+  //printf ("\tmov\t%%rsi, %s\n", var);
+  printf ("\tlea\t%%rsi, %s\n", var);
+  printf ("\tmov\t%%rdx, 1\n");
+  printf ("\tsyscall\n");
+  match ('x');
+}
+
 /* Parse and translate a statement. */
 void statement (void)
 {
@@ -398,11 +414,12 @@ void statement (void)
   /* Switch on first token. */
   switch (tokentype)
     {
-      /* GOTO */ case 'g': branch (); break;
-      /* IF   */ case 'i': conditional (); break;
-      /* FOR  */ case 'f': loop (); break;
-      /* NEXT */ case 'n': break;
-      /* LET  */ default: assignment (); break;
+      /* GOTO */  case 'g': branch (); break;
+      /* IF   */  case 'i': conditional (); break;
+      /* FOR  */  case 'f': loop (); break;
+      /* NEXT */  case 'n': break;
+      /* PRINT */ case 'p': print (); break;
+      /* LET  */  default: assignment (); break;
     }
 }
 
