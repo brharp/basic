@@ -394,13 +394,8 @@ void print (void)
   match ('p');
   if (tokentype != 'x')
     syntaxerror ();
-  char *var = tokentext;
-  printf ("\tmov\t%%rax, 1\n");
-  printf ("\tmov\t%%rdi, 1\n");
-  //printf ("\tmov\t%%rsi, %s\n", var);
-  printf ("\tlea\t%%rsi, %s\n", var);
-  printf ("\tmov\t%%rdx, 1\n");
-  printf ("\tsyscall\n");
+  printf ("\tmov\t%%rax, %s\n", tokentext);
+  printf ("\tcall\tprint\n");
   match ('x');
 }
 

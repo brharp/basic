@@ -15,13 +15,14 @@ $(EXECUTABLE): $(OBJECTS)
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@
 
-test: test.bas
+test: test.bas rt.s
 	./basic < test.bas > test.s
-	$(CC) -g test.s
+	$(CC) -g test.s rt.s
 
 tags: $(SOURCES)
 	ctags $(SOURCES)
 
 .c.s:
 	$(CC) -Wall -O0 -ansi -m64 -masm=intel -S $< -o $@
+
 
