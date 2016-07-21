@@ -1,5 +1,7 @@
 /* BASIC */
 
+#define _GNU_SOURCE 1
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -20,7 +22,7 @@ void next (void);
 void nextchar (void);
 void skipspace (void);
 void syntaxerror (void);
-//int lookup (const char *table[], char *key, int n);
+/*int lookup (const char *table[], char *key, int n);*/
 int kwsearch (void);
 void scan (void);
 
