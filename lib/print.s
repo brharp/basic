@@ -3,6 +3,8 @@
 print:
 	push	%rbp            # Save base pointer
 	mov	%rbp, %rsp      # Set base pointer to stack pointer
+	mov	%dx, 10         # Push newline to stack
+	push	%dx
 print1:
 	mov	%rdx, %rax      # move rax to rdx
 	sar	%rdx, 63        #  and sign extend
