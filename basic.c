@@ -6,8 +6,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <assert.h>
 
-#define TOKENMAX 8
+#define TOKENMAX 80
 
 #define countof(X) (sizeof(X)/sizeof(X[0]))
 
@@ -16,6 +17,7 @@
 void getname (void);
 void getnum (void);
 void getop (void);
+void getstr (void);
 void init (void);
 int main (int argc, char *argv[]);
 void next (void);
@@ -29,8 +31,8 @@ void scan (void);
 /* Constants */
 
 char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
-  "STEP", "NEXT", "PRINT" };
-const char keycodes[] = "xlitgfosnp"; 
+  "STEP", "NEXT", "PRINT", "$TRING" };
+const char keycodes[] = "xlitgfosnp$"; 
 
 /* Variables */
 
@@ -84,13 +86,30 @@ void getnum (void)
   while (isdigit (lookahead))
     {
       if (tokenlength > TOKENMAX)
-        {
-          syntaxerror ();
-        }
+        syntaxerror ();
       tokentext[tokenlength] = lookahead;
       tokenlength++;
       nextchar ();
     }
+  tokentext[tokenlength] = '\0';
+}
+
+void getstr (void)
+{
+  tokentype = '$';
+  tokenlength = 0;
+  assert (lookahead == '"');
+  nextchar ();
+  while (lookahead != '"')
+    {
+      if (tokenlength > TOKENMAX)
+        syntaxerror ();
+      tokentext[tokenlength] = lookahead;
+      tokenlength++;
+      nextchar ();
+    }
+  /* Eat closing quote. */
+  nextchar ();
   tokentext[tokenlength] = '\0';
 }
 
@@ -108,6 +127,7 @@ void next (void)
   skipspace ();
   if (isalpha (lookahead)) getname ();
   else if (isdigit (lookahead)) getnum ();
+  else if (lookahead == '"') getstr ();
   else getop ();
   scan ();
 }
@@ -393,12 +413,32 @@ void loop (void)
 /* Print variable value. */
 void print (void)
 {
+  static int counter = 0;
   match ('p');
-  if (tokentype != 'x')
-    syntaxerror ();
-  printf ("\tmov\t%%rax, %s\n", tokentext);
-  printf ("\tcall\tprint\n");
-  match ('x');
+  if (tokentype == 'x')
+    {
+      printf ("\tmov\t%%rax, %s\n", tokentext);
+      match ('x');
+      printf ("\tcall\tprint\n");
+    }
+  else if (tokentype == '$')
+    {
+      int label = counter++;
+      printf ("\t.section .rodata\n");
+      printf ("STR%d:\n", label);
+      printf ("\t.string\t\"%s\"\n", tokentext);
+      printf ("\t.section .text\n");
+      printf ("\tmov\t%%rax, 1\n"); /* write(2) */
+      printf ("\tmov\t%%rdi, 1\n"); /* file descriptor 1 */
+      printf ("\tmov\t%%rsi, OFFSET FLAT: STR%d\n", label); /* pointer to char */
+      printf ("\tmov\t%%rdx, %d\n", tokenlength); /* length of string */
+      printf ("\tsyscall\n");
+      match ('$');
+    }
+  else
+    {
+      syntaxerror ();
+    }
 }
 
 /* Parse and translate a statement. */
