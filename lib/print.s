@@ -1,5 +1,9 @@
 	.intel_syntax
 	.globl	print
+	.globl	newline
+	.section .rodata
+LF:	.byte	10
+	.section .text
 print:
 	push	%rbp            # Save base pointer
 	mov	%rbp, %rsp      # Set base pointer to stack pointer
@@ -25,4 +29,12 @@ print2:
 	jnz	print2
 	pop	%rbp            # Restore base pointer
 	ret
-
+newline:
+	.equ	WRITE, 1
+	.equ	STDOUT, 1
+	mov	%rax, WRITE
+	mov	%rdi, STDOUT
+	mov	%rsi, OFFSET FLAT:LF
+	mov	%rdx, 1
+	syscall
+	ret

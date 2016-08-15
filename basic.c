@@ -415,12 +415,14 @@ void print (void)
 {
   static int counter = 0;
   match ('p');
+  /* Print a (numeric) variable. */
   if (tokentype == 'x')
     {
       printf ("\tmov\t%%rax, %s\n", tokentext);
       match ('x');
       printf ("\tcall\tprint\n");
     }
+  /* Print a literal string. */
   else if (tokentype == '$')
     {
       int label = counter++;
@@ -430,9 +432,10 @@ void print (void)
       printf ("\t.section .text\n");
       printf ("\tmov\t%%rax, 1\n"); /* write(2) */
       printf ("\tmov\t%%rdi, 1\n"); /* file descriptor 1 */
-      printf ("\tmov\t%%rsi, OFFSET FLAT: STR%d\n", label); /* pointer to char */
+      printf ("\tmov\t%%rsi, OFFSET FLAT: STR%d\n", label); /* ptr to char */
       printf ("\tmov\t%%rdx, %d\n", tokenlength); /* length of string */
       printf ("\tsyscall\n");
+      printf ("\tcall\tnewline\n");
       match ('$');
     }
   else

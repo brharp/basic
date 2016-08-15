@@ -7,6 +7,9 @@ OBJECTS=$(SOURCES:.s=.o)
 
 all: $(OBJECTS)
 
+%.o : %.s
+	$(CC) $(CFLAGS) -o $@ $<
+
 tags: $(SOURCES)
 	ctags $(SOURCES)
 

@@ -2,7 +2,7 @@
 CC=gcc
 BC=../basic
 CFLAGS=-c -Wall -g
-LDFLAGS=
+LDFLAGS=-g
 SOURCES=test.bas
 OBJECTS=$(SOURCES:.bas=.o)
 EXECUTABLE=a.test
