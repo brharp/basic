@@ -23,3 +23,6 @@ tags: $(SOURCES)
 clean:
 	rm -f *.o
 
+test:
+	$(MAKE) -C t test
+

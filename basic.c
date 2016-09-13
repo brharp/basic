@@ -31,8 +31,8 @@ void scan (void);
 /* Constants */
 
 char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
-  "STEP", "NEXT", "PRINT", "$TRING" };
-const char keycodes[] = "xlitgfosnp$"; 
+  "STEP", "NEXT", "PRINT", "$TRING", "DIM" };
+const char keycodes[] = "xlitgfosnp$d"; 
 
 /* Variables */
 
@@ -40,16 +40,22 @@ int  lookahead;
 int  tokentype;
 char tokentext[TOKENMAX+1];
 int  tokenlength;
+int  ln; /* Line number */
 
 void die (const char *msg)
 {
-  fprintf (stderr, "%s\n", msg);
+  fprintf (stderr, "?%s IN %d\n", msg, ln);
   exit (EXIT_FAILURE);
+}
+
+void redimerror (void)
+{
+  die ("REDIM'D ARRAY");
 }
 
 void syntaxerror (void)
 {
-  die ("syntax error");
+  die ("SYNTAX ERROR");
 }
 
 void nextchar (void)
@@ -173,6 +179,8 @@ void linenumber (void)
 {
   /* Generate a line number label. */
   printf ("L%s:\n", tokentext);
+  /* Store current line number in global variable. */
+  ln = atol (tokentext);
   /* Match line number. */
   match ('#');
 }
@@ -242,6 +250,45 @@ void expression (void)
 
 char *symboltable[128];
 int symbolcount;
+
+/* Allocate space for a variable. */
+void allot (char *name, int size)
+{
+  printf ("\t.comm\t%s, %d\n", name, size);
+}
+
+/* Add name to symbol table. */
+char *intern (char *name)
+{
+  int i = symbolcount;
+  /* Define symbol. */
+  if (i >= countof(symboltable))
+    die ("symbol table full");
+  /* Add entry to table. */
+  symboltable[i] = strdup (name);
+  /* Increment symbol table counter. */
+  ++symbolcount;
+  return symboltable[i];
+}
+
+void dim (void)
+{
+  match ('d');
+  if (tokentype != 'x')
+    syntaxerror ();
+  int i = lookup (symboltable, tokentext, symbolcount);
+  if (i > -1)
+    redimerror ();
+  char *x = intern (tokentext);
+  match ('x');
+  match ('(');
+  if (tokentype != '#')
+    syntaxerror ();
+  int n = atol (tokentext);
+  match ('#');
+  match (')');
+  allot (x, n*8);
+}
 
 char *identifier (void)
 {
@@ -454,12 +501,13 @@ void statement (void)
   /* Switch on first token. */
   switch (tokentype)
     {
-      /* GOTO */  case 'g': branch (); break;
-      /* IF   */  case 'i': conditional (); break;
-      /* FOR  */  case 'f': loop (); break;
-      /* NEXT */  case 'n': break;
+      /* GOTO  */ case 'g': branch (); break;
+      /* IF    */ case 'i': conditional (); break;
+      /* FOR   */ case 'f': loop (); break;
+      /* NEXT  */ case 'n': break;
       /* PRINT */ case 'p': print (); break;
-      /* LET  */  default: assignment (); break;
+      /* DIM   */ case 'd': dim (); break;
+      /* LET   */ default: assignment (); break;
     }
 }
 
