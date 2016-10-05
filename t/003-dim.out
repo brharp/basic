@@ -10,7 +10,10 @@ L10:
 	.comm	X, 800
 L20:
 	mov	%rax, 42
-	mov	DWORD PTR X[%rip+56], %rax
+	mov	QWORD PTR X[%rip+56], %rax
+L30:
+	mov	%rax, X[%rip+56]
+	call	print
 	mov	%eax, 0
 	leave
 	ret
