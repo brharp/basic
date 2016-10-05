@@ -26,3 +26,8 @@ clean:
 test:
 	$(MAKE) -C t test
 
+run:
+	./basic < test.bas > test.s
+	$(CC) test.s lib/print.o
+	./a.out
+

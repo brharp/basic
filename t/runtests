@@ -4,6 +4,7 @@ for test in *.in
   do
     tname=$(basename $test .in)
     ../basic < $tname.in > $tname.tmp 2>&1
+    echo " ****** $tname ****** "
     diff $tname.out $tname.tmp
   done
 

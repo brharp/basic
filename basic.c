@@ -199,11 +199,11 @@ void factor (void)
           int i = atoi (tokentext);
           match ('#');
           match (')');
-          printf ("\tmov\t%%rax, %s+%d\n", x, i * INTSIZE);
+          printf ("\tmov\t%%rax, %s[%%rip+%d]\n", x, i * INTSIZE);
         }
       else
         {
-          printf ("\tmov\t%%rax, %s\n", tokentext);
+          printf ("\tmov\t%%rax, %s\n", x);
         }
     }
   else
@@ -274,6 +274,7 @@ void allot (char *name, int size)
 /* Add name to symbol table. */
 char *intern (char *name)
 {
+  //fprintf (stderr, "intern (\"%s\")\n", name);
   int i = symbolcount;
   /* Define symbol. */
   if (i >= countof(symboltable))
@@ -282,6 +283,7 @@ char *intern (char *name)
   symboltable[i] = strdup (name);
   /* Increment symbol table counter. */
   ++symbolcount;
+  //fprintf (stderr, "return \"%s\"\n", symboltable[i]);
   return symboltable[i];
 }
 
@@ -344,7 +346,7 @@ void assignment (void)
       match (')');
       match ('=');
       expression ();
-      printf ("\tmov\tDWORD PTR %s[%%rip+%d], %%rax\n", id, INTSIZE * offset);
+      printf ("\tmov\tQWORD PTR %s[%%rip+%d], %%rax\n", id, INTSIZE * offset);
     }
   else
     {
@@ -489,15 +491,8 @@ void print (void)
 {
   static int counter = 0;
   match ('p');
-  /* Print a (numeric) variable. */
-  if (tokentype == 'x')
-    {
-      printf ("\tmov\t%%rax, %s\n", tokentext);
-      match ('x');
-      printf ("\tcall\tprint\n");
-    }
   /* Print a literal string. */
-  else if (tokentype == '$')
+  if (tokentype == '$')
     {
       int label = counter++;
       printf ("\t.section .rodata\n");
@@ -512,9 +507,11 @@ void print (void)
       printf ("\tcall\tnewline\n");
       match ('$');
     }
+  /* Print an expression. */
   else
     {
-      syntaxerror ();
+      expression ();
+      printf ("\tcall\tprint\n");
     }
 }
 
