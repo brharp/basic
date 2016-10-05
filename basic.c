@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #define TOKENMAX 80
+#define INTSIZE 8
 
 #define countof(X) (sizeof(X)/sizeof(X[0]))
 
@@ -19,6 +20,7 @@ void getnum (void);
 void getop (void);
 void getstr (void);
 void init (void);
+char *intern (char *);
 int main (int argc, char *argv[]);
 void next (void);
 void nextchar (void);
@@ -189,8 +191,20 @@ void factor (void)
 {
   if (tokentype == 'x')
     {
-      printf ("\tmov\t%%rax, %s\n", tokentext);
+      char *x = intern (tokentext);
       match ('x');
+      if (tokentype == '(')
+        {
+          match ('(');
+          int i = atoi (tokentext);
+          match ('#');
+          match (')');
+          printf ("\tmov\t%%rax, %s+%d\n", x, i * INTSIZE);
+        }
+      else
+        {
+          printf ("\tmov\t%%rax, %s\n", tokentext);
+        }
     }
   else
     {
@@ -287,7 +301,7 @@ void dim (void)
   int n = atol (tokentext);
   match ('#');
   match (')');
-  allot (x, n*8);
+  allot (x, n*INTSIZE);
 }
 
 char *identifier (void)
@@ -302,7 +316,7 @@ char *identifier (void)
     {
       i = symbolcount;
       /* Allocate space for variable. */
-      printf ("\t.comm\t%s, 8\n", tokentext);
+      printf ("\t.comm\t%s, %d\n", tokentext, INTSIZE);
       /* Define symbol. */
       if (i >= countof(symboltable))
         die ("symbol table full");
@@ -322,9 +336,22 @@ void assignment (void)
   if (tokentype == 'l')
     match ('l');
   char *id = identifier ();
-  match ('=');
-  expression ();
-  printf ("\tmov\t%s, %%rax\n", id); 
+  if (tokentype == '(')
+    {
+      match ('(');
+      int offset = atoi (tokentext);
+      match ('#');
+      match (')');
+      match ('=');
+      expression ();
+      printf ("\tmov\tDWORD PTR %s[%%rip+%d], %%rax\n", id, INTSIZE * offset);
+    }
+  else
+    {
+      match ('=');
+      expression ();
+      printf ("\tmov\t%s, %%rax\n", id); 
+    }
 }
 
 void statement (void);
@@ -454,7 +481,7 @@ void loop (void)
   printf ("\tmov\t%%rax, %s\n", id);
   printf ("\tcmp\t%%rax, [%%rsp]\n");
   printf ("\tjl\tN%d\n", label);
-  printf ("\tadd\t%%rsp, 8\n");
+  printf ("\tadd\t%%rsp, %d\n", INTSIZE);
 }
 
 /* Print variable value. */
