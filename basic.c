@@ -44,6 +44,11 @@ char tokentext[TOKENMAX+1];
 int  tokenlength;
 int  ln; /* Line number */
 
+/* Code Templates */
+
+#define ALOAD(ARRAY, INDEX) "\tmov\t%%rax, "ARRAY"[%%rip+"INDEX"]\n"
+#define JUMP(LINENO) "\tjmp\tL"LINENO"\n"
+
 void die (const char *msg)
 {
   fprintf (stderr, "?%s IN %d\n", msg, ln);
@@ -199,7 +204,7 @@ void factor (void)
           int i = atoi (tokentext);
           match ('#');
           match (')');
-          printf ("\tmov\t%%rax, %s[%%rip+%d]\n", x, i * INTSIZE);
+          printf (ALOAD ("%1$s", "%2$d"), x, i * INTSIZE);
         }
       else
         {
@@ -452,7 +457,7 @@ void branch (void)
   /* Match line number. */
   match ('#');
   /* Jump to line number label. */
-  printf ("\tjmp\tL%d\n", lineno);
+  printf (JUMP ("%1$d"), lineno);
 }
 
 /* Parse and translate a (FOR) loop. */
