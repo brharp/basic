@@ -1,7 +1,7 @@
 
 CC=gcc
 CFLAGS=-c -Wall -g
-LDFALGS=
+LDFLAGS=
 SOURCES=basic.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=basic
@@ -28,6 +28,6 @@ test:
 
 run:
 	./basic < test.bas > test.s
-	$(CC) test.s lib/print.o
+	$(CC) -g test.s lib/print.o
 	./a.out
 

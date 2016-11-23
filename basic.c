@@ -33,8 +33,8 @@ void scan (void);
 /* Constants */
 
 char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
-  "STEP", "NEXT", "PRINT", "$TRING", "DIM" };
-const char keycodes[] = "xlitgfosnp$d"; 
+  "STEP", "NEXT", "PRINT", "$TRING", "DIM", "INPUT" };
+const char keycodes[] = "xlitgfosnp$dr"; 
 
 /* Variables */
 
@@ -461,17 +461,24 @@ void loop (void)
   void block (void);
   static int counter = 0;
   int label = counter++;
+  /* Match "FOR" */
   match ('f');
+  /* Match variable */
   char *id = identifier ();
   match ('=');
+  /* Match lower bound */
   expression ();
+  /* Initialize counter to lower bound */
   printf ("\tmov\t%s, %%rax\n", id);
+  /* Match "TO" */
   match ('o');
+  /* Match upper bound */
   expression ();
   printf ("\tpush\t%%rax\n");
   printf ("\tjmp\tT%d\n", label);
   printf ("N%d:\n", label);
   block ();
+  /* Match "NEXT" */
   match ('n');
   if (tokentype != 'x' || strcmp (id, tokentext) != 0)
     syntaxerror ();
@@ -484,6 +491,42 @@ void loop (void)
   printf ("\tcmp\t%%rax, [%%rsp]\n");
   printf ("\tjl\tN%d\n", label);
   printf ("\tadd\t%%rsp, %d\n", INTSIZE);
+}
+
+/* Match a variable reference. */
+void var (void)
+{
+  char *x = identifier ();
+  if (tokentype == '(')
+    {
+      match ('(');
+      int i = atoi (tokentext);
+      match ('#');
+      match (')');
+      printf ("\tlea\t%%rax, %s[%%rip+%d]\n", x, i * INTSIZE);
+    }
+  else
+    {
+      printf ("\tlea\t%%rax, %s\n", x);
+    }
+}
+
+/* Input variable value. */
+void input (void)
+{
+  /* Match INPUT token */
+  match ('r'); 
+  printf ("\tmov\t%%rax, 0\n"); /* read(2) */
+  printf ("\tmov\t%%rdi, 0\n"); /* file descriptor = 0 */
+  printf ("\tsub\t%%rsp, 2\n"); /* reserve space on stack */
+  printf ("\tmov\t%%rsi, %%rsp\n"); /*  pointer to char (top of stack) */
+  printf ("\tmov\t%%rdx, 1\n"); /* read 1 char */
+  printf ("\tsyscall\n");
+  printf ("\txor\t%%rbx, %%rbx\n"); /* clear rbx */
+  printf ("\tpop\t%%dx\n"); /* Pop character read */
+  printf ("\tmov\t%%bl, %%dl\n");
+  var ();
+  printf ("\tmov\t[%%rax], %%rbx\n"); /* store in variable */
 }
 
 /* Print variable value. */
@@ -530,6 +573,7 @@ void statement (void)
       /* FOR   */ case 'f': loop (); break;
       /* NEXT  */ case 'n': break;
       /* PRINT */ case 'p': print (); break;
+      /* INPUT */ case 'r': input (); break;
       /* DIM   */ case 'd': dim (); break;
       /* LET   */ default: assignment (); break;
     }
