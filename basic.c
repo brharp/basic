@@ -47,7 +47,20 @@ int  ln; /* Line number */
 /* Code Templates */
 
 #define ALOAD(ARRAY, INDEX) "\tmov\t%%rax, "ARRAY"[%%rip+"INDEX"]\n"
+#define LOAD(X) "\tmov\t%%rax, "X"\n"
 #define JUMP(LINENO) "\tjmp\tL"LINENO"\n"
+
+/* Code generators */
+
+void aload (const char *array, const int index)
+{
+  printf (ALOAD ("%1$s", "%2$d"), array, index);
+}
+
+void load (const char *x)
+{
+  printf (LOAD ("%1$s"), x);
+}
 
 void die (const char *msg)
 {
@@ -204,11 +217,11 @@ void factor (void)
           int i = atoi (tokentext);
           match ('#');
           match (')');
-          printf (ALOAD ("%1$s", "%2$d"), x, i * INTSIZE);
+          aload (x, i * INTSIZE);
         }
       else
         {
-          printf ("\tmov\t%%rax, %s\n", x);
+          load (x);
         }
     }
   else

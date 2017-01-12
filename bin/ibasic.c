@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-char linebuffer[72], *linepointer;
+char linebuffer[72], *lineptr;
 int  currentline;
 
 struct programline {
@@ -22,8 +22,8 @@ char
 nextchar()
 {
   char c;
-  while ((c=*linepointer)==' ')
-    ++linepointer;
+  while ((c=*lineptr)==' ')
+    ++lineptr;
   return c;
 }
 
@@ -39,7 +39,7 @@ inputline()
     if (isprint(c))
       *p++ = c;
   *p = 0;
-  linepointer=linebuffer;
+  lineptr=linebuffer;
   newline();
 }
 
@@ -48,7 +48,7 @@ linenumber()
 {
   int linenumber = -1, n;
   sscanf(linebuffer, "%d%n", &linenumber, &n);
-  linepointer = linebuffer+n; /* skip number */
+  lineptr = linebuffer+n; /* skip number */
   return linenumber;
 }
 
@@ -69,7 +69,7 @@ storeprogramline(int linenumber)
   line = programlinealloc();
   line->next = 0;
   line->linenumber = linenumber;
-  line->str = strdup(linepointer);
+  line->str = strdup(lineptr);
   while (*p!=NULL && (*p)->linenumber < linenumber) {
     p = &((*p)->next);
   }
@@ -100,10 +100,9 @@ main ()
     int n=linenumber();
     //tokenize();
     if (n<0)
-      break;
+      list();
     else
       storeprogramline(n);
   }
-  list();
 }
 
