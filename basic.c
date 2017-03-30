@@ -629,9 +629,43 @@ void epilogue (void)
   printf ("\tret\n");
 }
 
+char *
+match_keyword (char *first, char *keyword)
+{
+  if (*keyword == '\0')
+    return first;
+  else if (*first == *keyword)
+    return match_keyword (first + 1, keyword + 1);
+  else
+    return NULL;
+}
+
+void
+tokenize (void)
+{
+  char line[80];
+  char *input = fgets (line, 80, stdin);
+  int count = countof (keywords);
+  while (*input) {
+    int i;
+    for (i = 0; i < count; i++) {
+      char *p;
+      if ((p = match_keyword (input, keywords[i]))) {
+        printf ("TOKEN: %s\n", keywords[i]);
+        input = p;
+      }
+    }
+    if (i == count) {
+      printf ("CHAR: %c\n", *input++);
+    }
+  }
+}
+
 /* Main program. */
 int main (int argc, char *argv[])
 {
+  for (;;)
+    tokenize();
   init ();
   prologue ();
   block ();
