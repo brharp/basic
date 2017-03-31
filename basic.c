@@ -32,8 +32,21 @@ void scan (void);
 
 /* Constants */
 
-char *keywords[] = { "LET", "IF", "THEN", "GOTO", "FOR", "TO", 
-  "STEP", "NEXT", "PRINT", "$TRING", "DIM", "INPUT" };
+char *keywords = 
+  "LET"       "\x81"
+  "IF"        "\x82"
+  "THEN"      "\x83"
+  "GOTO"      "\x84" 
+  "FOR"       "\x85" 
+  "TO"        "\x86" 
+  "STEP"      "\x87"
+  "NEXT"      "\x88"
+  "PRINT"     "\x89"
+  "$TRING"    "\x8A"
+  "DIM"       "\x8B"
+  "INPUT"     "\x8C"
+};
+
 const char keycodes[] = "xlitgfosnp$dr"; 
 
 /* Variables */
@@ -630,35 +643,43 @@ void epilogue (void)
 }
 
 char *
-match_keyword (char *first, char *keyword)
+match_token (char *input, char *token)
 {
-  if (*keyword == '\0')
-    return first;
-  else if (*first == *keyword)
-    return match_keyword (first + 1, keyword + 1);
+  if (*token == '\0')
+    return input;
+  else if (*input == *token)
+    return match_token (++input, ++token);
   else
     return NULL;
 }
 
-void
-tokenize (void)
+char
+copy_char (char *src, char *dst)
 {
-  char line[80];
-  char *input = fgets (line, 80, stdin);
-  int count = countof (keywords);
-  while (*input) {
-    int i;
-    for (i = 0; i < count; i++) {
-      char *p;
-      if ((p = match_keyword (input, keywords[i]))) {
-        printf ("TOKEN: %s\n", keywords[i]);
-        input = p;
-      }
+  return (*dst = *src);
+}
+
+void
+tokenize (input, output)
+{
+  if (*input == '"')
+    {
+      copy_char (input++, output++);
+      while (*input)
+        if ((copy_char (input++, output++) == '"'))
+          break;
+      return tokenize (input, output);
     }
-    if (i == count) {
-      printf ("CHAR: %c\n", *input++);
+  
+  for (keywords) {
+    if ((p = match_token(input, keywords[i]))) {
+      write_char (output++, i + LET);
+      return tokenize (p, output);
     }
   }
+  
+  copy_char (input++, output++);
+  return tokenize (input, output);
 }
 
 /* Main program. */
