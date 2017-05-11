@@ -55,15 +55,17 @@ int  ln; /* Line number */
 #define CODEMAX 10000
 int code[CODEMAX];
 int *here = code;
-enum op { ADD, FETCH, LABEL, LIT, PUSH, SUB };
+enum op { STOP, ADD, FETCH, LABEL, LIT, PUSH, STORE, SUB };
 
 void codegen(int op)
 {
 	*here++ = op;
 }
 
-void compile(int *op)
+void compile()
 {
+	int *op = code;
+	while (*op)
 	switch (*op++) {
 	case ADD:
 		printf("\tpop\t%%rdx\n");
@@ -80,6 +82,10 @@ void compile(int *op)
 		break;
 	case PUSH:
 		printf("\tpush\t%%rax\n");
+		break;
+	case STORE:
+		printf("\tpop\t%%rdx\n");
+		printf("\tmov\t[VARBASE + %%rdx * 8], %%rax\n"); 
 		break;
 	case SUB:
 		printf("\tmov\t%%rdx, %%rax\n");
@@ -275,13 +281,14 @@ void linenumber (void)
 	match ('#');
 }
 
+char *identifier (void);
+
 void factor (void)
 {
   if (tokentype == 'x')
     {
-      //char *x = intern (tokentext);
-	  int x = id(tokentext);
-      match ('x');
+      char *x = identifier ();
+      //match ('x');
       if (tokentype == '(')
         {
           match ('(');
@@ -293,15 +300,15 @@ void factor (void)
       else
         {
           //load (x);
-		  codegen(LIT);
-		  codegen(x);
-		  codegen(FETCH);
+          //codegen(LIT);
+          //codegen(x);
+          codegen(FETCH);
         }
     }
   else
     {
-	  codegen(LIT);
-	  codegen(atoi(tokentext));
+      codegen(LIT);
+      codegen(atoi(tokentext));
       match ('#');
     }
 }
@@ -334,18 +341,18 @@ void expression (void)
   term ();
   while (tokentype == '+' || tokentype == '-')
     {
-	  codegen(PUSH);
+      codegen(PUSH);
       switch (tokentype)
         {
           case '+':
             match ('+');
             term ();
-			codegen(ADD);
+            codegen(ADD);
             break;
           case '-':
             match ('-');
             term ();
-			codegen(SUB);
+            codegen(SUB);
             break;
         }
     }
@@ -408,7 +415,7 @@ int id(void)
     {
       i = symbolcount;
       /* Allocate space for variable. */
-      printf ("\t.comm\t%s, %d\n", tokentext, INTSIZE);
+      //printf ("\t.comm\t%s, %d\n", tokentext, INTSIZE);
       /* Define symbol. */
       if (i >= countof(symboltable))
         die ("symbol table full");
@@ -417,6 +424,8 @@ int id(void)
       /* Increment symbol table counter. */
       ++symbolcount;
     }
+  codegen(LIT);
+  codegen(i);
   /* Match variable. */
   match ('x');
   return i;
@@ -433,6 +442,7 @@ void assignment (void)
   if (tokentype == 'l')
     match ('l');
   char *id = identifier ();
+  codegen(PUSH);
   if (tokentype == '(')
     {
       match ('(');
@@ -447,7 +457,8 @@ void assignment (void)
     {
       match ('=');
       expression ();
-      printf ("\tmov\t%s, %%rax\n", id); 
+      //printf ("\tmov\t%s, %%rax\n", id); 
+      codegen(STORE);
     }
 }
 
@@ -741,12 +752,13 @@ tokenize (void)
 /* Main program. */
 int main (int argc, char *argv[])
 {
-  for (;;)
-    tokenize();
+  //for (;;)
+    //tokenize();
   init ();
   prologue ();
   block ();
   epilogue ();
+  compile();
   return 0;
 }
 
