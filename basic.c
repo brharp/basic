@@ -52,6 +52,75 @@ int  ln; /* Line number */
 
 /* Code generators */
 
+#define CODEMAX 10000
+int code[CODEMAX];
+int *here = code;
+enum op { ADD, FETCH, LABEL, LIT, PUSH, SUB };
+
+void codegen(int op)
+{
+	*here++ = op;
+}
+
+void compile(int *op)
+{
+	switch (*op++) {
+	case ADD:
+		printf("\tpop\t%%rdx\n");
+		printf("\tadd\t%%rax, %%rdx\n");
+		break;
+	case FETCH:
+		printf("\tmov\t%%rax, [VARBASE + %%rax * 8]\n");
+		break;
+	case LABEL:
+		printf("L%d:\n", *op++);
+		break;
+	case LIT:
+		printf("\tmov\t%%rax, %d\n", *op++);
+		break;
+	case PUSH:
+		printf("\tpush\t%%rax\n");
+		break;
+	case SUB:
+		printf("\tmov\t%%rdx, %%rax\n");
+		printf("\tpop\t%%rax\n");
+		printf("\tsub\t%%rax, %%rdx\n");
+		break;
+	}
+}
+
+void run(int *op)
+{
+	int x, y;
+	int VARBASE[26];
+	int STACKBASE[16];
+	int *sp = STACKBASE;
+	while (1) {
+		switch (*op++) {
+		case ADD:
+			*--sp = y;
+			x += y;
+			break;
+		case FETCH:
+			x = VARBASE[x];
+			break;
+		case LIT:
+			x = *op++;
+			break;
+		case PUSH:
+			*sp++ = x;
+			break;
+		case SUB:
+			y = *--sp;
+			x = y - x;
+			break;
+		}
+		if (sp - STACKBASE > sizeof(STACKBASE)) {
+			die("OVERFLOW");
+		}
+	}
+}
+
 void aload (const char *array, const int index)
 {
   printf (ALOAD ("%1$s", "%2$d"), array, index);
@@ -197,19 +266,21 @@ void match (int type)
 /* Parse and translate a line number. */
 void linenumber (void)
 {
-  /* Generate a line number label. */
-  printf ("L%s:\n", tokentext);
-  /* Store current line number in global variable. */
-  ln = atol (tokentext);
-  /* Match line number. */
-  match ('#');
+	/* Store current line number in global variable. */
+	ln = atol(tokentext);
+	/* Generate a line number label. */
+	codegen(LABEL);
+	codegen(ln);
+	/* Match line number. */
+	match ('#');
 }
 
 void factor (void)
 {
   if (tokentype == 'x')
     {
-      char *x = intern (tokentext);
+      //char *x = intern (tokentext);
+	  int x = id(tokentext);
       match ('x');
       if (tokentype == '(')
         {
@@ -221,12 +292,16 @@ void factor (void)
         }
       else
         {
-          load (x);
+          //load (x);
+		  codegen(LIT);
+		  codegen(x);
+		  codegen(FETCH);
         }
     }
   else
     {
-      printf ("\tmov\t%%rax, %s\n", tokentext);
+	  codegen(LIT);
+	  codegen(atoi(tokentext));
       match ('#');
     }
 }
@@ -259,21 +334,18 @@ void expression (void)
   term ();
   while (tokentype == '+' || tokentype == '-')
     {
-      printf ("\tpush\t%%rax\n");
+	  codegen(PUSH);
       switch (tokentype)
         {
           case '+':
             match ('+');
             term ();
-            printf ("\tpop\t%%rdx\n");
-            printf ("\tadd\t%%rax, %%rdx\n");
+			codegen(ADD);
             break;
           case '-':
             match ('-');
             term ();
-            printf ("\tmov\t%%rdx, %%rax\n");
-            printf ("\tpop\t%%rax\n");
-            printf ("\tsub\t%%rax, %%rdx\n");
+			codegen(SUB);
             break;
         }
     }
@@ -324,7 +396,7 @@ void dim (void)
   allot (x, n*INTSIZE);
 }
 
-char *identifier (void)
+int id(void)
 {
   /* Syntax check. */
   if (tokentype != 'x')
@@ -347,7 +419,12 @@ char *identifier (void)
     }
   /* Match variable. */
   match ('x');
-  return symboltable[i];
+  return i;
+}
+
+char *identifier(void)
+{
+	return symboltable[id()];
 }
 
 void assignment (void)
