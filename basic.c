@@ -72,7 +72,7 @@ void compile()
 		printf("\tadd\t%%rax, %%rdx\n");
 		break;
 	case FETCH:
-		printf("\tmov\t%%rax, [VARBASE + %%rax * 8]\n");
+		printf("\tmov\t%%rax, [VARBASE + %d * 8]\n", *op++);
 		break;
 	case LABEL:
 		printf("L%d:\n", *op++);
@@ -84,8 +84,8 @@ void compile()
 		printf("\tpush\t%%rax\n");
 		break;
 	case STORE:
-		printf("\tpop\t%%rdx\n");
-		printf("\tmov\t[VARBASE + %%rdx * 8], %%rax\n"); 
+		//printf("\tpop\t%%rdx\n");
+		printf("\tmov\t[VARBASE + %d * 8], %%rax\n", *op++); 
 		break;
 	case SUB:
 		printf("\tmov\t%%rdx, %%rax\n");
@@ -282,12 +282,14 @@ void linenumber (void)
 }
 
 char *identifier (void);
+int id (void);
 
 void factor (void)
 {
   if (tokentype == 'x')
     {
-      char *x = identifier ();
+      //char *x = identifier ();
+      int x = id ();
       //match ('x');
       if (tokentype == '(')
         {
@@ -302,7 +304,8 @@ void factor (void)
           //load (x);
           //codegen(LIT);
           //codegen(x);
-          codegen(FETCH);
+          codegen (FETCH);
+          codegen (x);
         }
     }
   else
@@ -424,8 +427,8 @@ int id(void)
       /* Increment symbol table counter. */
       ++symbolcount;
     }
-  codegen(LIT);
-  codegen(i);
+  //codegen(LIT);
+  //codegen(i);
   /* Match variable. */
   match ('x');
   return i;
@@ -441,8 +444,9 @@ void assignment (void)
   /* Match (optional) "LET" keyword. */
   if (tokentype == 'l')
     match ('l');
-  char *id = identifier ();
-  codegen(PUSH);
+  //char *id = identifier ();
+  int i = id ();
+  //codegen (PUSH);
   if (tokentype == '(')
     {
       match ('(');
@@ -458,7 +462,8 @@ void assignment (void)
       match ('=');
       expression ();
       //printf ("\tmov\t%s, %%rax\n", id); 
-      codegen(STORE);
+      codegen (STORE);
+      codegen (i);
     }
 }
 
