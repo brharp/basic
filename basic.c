@@ -55,7 +55,7 @@ int  ln; /* Line number */
 #define CODEMAX 10000
 int code[CODEMAX];
 int *here = code;
-enum op { STOP, ADD, FETCH, LABEL, LIT, PUSH, STORE, SUB };
+enum op { STOP, ADD, ARRAYFETCH, ARRAYSTORE, FETCH, LABEL, LIT, PUSH, STORE, SUB };
 
 void codegen(int op)
 {
@@ -70,6 +70,14 @@ void compile()
 	case ADD:
 		printf("\tpop\t%%rdx\n");
 		printf("\tadd\t%%rax, %%rdx\n");
+		break;
+	case ARRAYFETCH:
+		printf("\tpop\t%%rcx\n");
+		printf("\tmov\t%%rax, [ARRAYBASE + %d + %%rcx * 8]\n", *op++);
+		break;
+	case ARRAYSTORE:
+		printf("\tpop\t%%rcx\n");
+		printf("\tmov\t[ARRAYBASE + %d + %%rcx * 8], %%rax\n", *op++);
 		break;
 	case FETCH:
 		printf("\tmov\t%%rax, [VARBASE + %d * 8]\n", *op++);
@@ -294,10 +302,14 @@ void factor (void)
       if (tokentype == '(')
         {
           match ('(');
-          int i = atoi (tokentext);
-          match ('#');
+          //int i = atoi (tokentext);
+          //match ('#');
+          expression ();
+          codegen (PUSH);
           match (')');
-          aload (x, i * INTSIZE);
+          codegen (ARRAYFETCH);
+          codegen (x);
+          //aload (x, i * INTSIZE);
         }
       else
         {
@@ -450,12 +462,16 @@ void assignment (void)
   if (tokentype == '(')
     {
       match ('(');
-      int offset = atoi (tokentext);
-      match ('#');
+      //int offset = atoi (tokentext);
+      expression ();
+      codegen (PUSH);
+      //match ('#');
       match (')');
       match ('=');
       expression ();
-      printf ("\tmov\tQWORD PTR %s[%%rip+%d], %%rax\n", id, INTSIZE * offset);
+      codegen (ARRAYSTORE);
+      codegen (i);
+      //printf ("\tmov\tQWORD PTR %s[%%rip+%d], %%rax\n", id, INTSIZE * offset);
     }
   else
     {
