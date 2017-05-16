@@ -43,6 +43,9 @@ int  tokentype;
 char tokentext[TOKENMAX+1];
 int  tokenlength;
 int  ln; /* Line number */
+char *symboltable[128];
+int symbolcount;
+
 
 /* Code Templates */
 
@@ -99,6 +102,46 @@ void compile()
 		printf("\tmov\t%%rdx, %%rax\n");
 		printf("\tpop\t%%rax\n");
 		printf("\tsub\t%%rax, %%rdx\n");
+		break;
+	}
+}
+
+
+void compile_to_c()
+{
+	int *op = code, r = 0, t;
+	while (*op)
+	switch (*op++) {
+	case ADD:
+		printf("\tconst int r%d = r%d + r%d;\n", r, r-2, r-1);
+		++r;
+		break;
+	case ARRAYFETCH:
+		printf("\tconst int r%d = %s[%d]\n", r, symboltable[*op++], r-1);
+		++r;
+		break;
+	case ARRAYSTORE:
+		printf("\tpop\t%%rcx\n");
+		printf("\tmov\t[ARRAYBASE + %d + %%rcx * 8], %%rax\n", *op++);
+		break;
+	case FETCH:
+		printf("\tconst int r%d = %s;\n", r, symboltable[*op++]);
+		++r;
+		break;
+	case LABEL:
+		printf("L%d:\n", *op++);
+		break;
+	case LIT:
+		printf("\tconst int r%d = %d;\n", r, *op++);
+		++r;
+		break;
+	case STORE:
+		printf("\t%s = r%d;\n", symboltable[*op++], r-1);
+		++r;
+		break;
+	case SUB:
+		printf("\tconst int r%d = r%d - r%d;\n", r, r-2, r-1);
+		++r;
 		break;
 	}
 }
@@ -373,9 +416,6 @@ void expression (void)
     }
 }
 
-
-char *symboltable[128];
-int symbolcount;
 
 /* Allocate space for a variable. */
 void allot (char *name, int size)
@@ -779,7 +819,7 @@ int main (int argc, char *argv[])
   prologue ();
   block ();
   epilogue ();
-  compile();
+  compile_to_c();
   return 0;
 }
 
