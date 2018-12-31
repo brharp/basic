@@ -4,6 +4,8 @@ for test in *.in
   do
     tname=$(basename $test .in)
     ../basic < $tname.in > $tname.tmp 2>&1
+    ../basic < $tname.in > $tname.s 2>&1
+    gcc $tname.s ../lib/*.o -o $tname.exe
     echo " ****** $tname ****** "
     diff $tname.out $tname.tmp
   done

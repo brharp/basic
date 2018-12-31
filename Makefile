@@ -34,3 +34,9 @@ run:
 	$(CC) -g test.s lib/print.o
 	./a.out
 
+%.s: %.bas
+	./basic < $< > $@
+
+%.exe: %.s
+	$(CC) -g $< lib/*.o -o $@
+

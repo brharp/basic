@@ -13,6 +13,10 @@
 
 #define countof(X) (sizeof(X)/sizeof(X[0]))
 
+#define TO 'o'
+#define STEP 's'
+#define NEXT 'n'
+
 /* Function declarations */
 
 void getname (void);
@@ -473,12 +477,24 @@ void branch (void)
   printf (JUMP ("%1$d"), lineno);
 }
 
+
+#define MAXSTACK 8
+static int counter = 0;
+static int label[MAXSTACK];
+static int sp = -1;
+
 /* Parse and translate a (FOR) loop. */
 void loop (void)
 {
-  void block (void);
-  static int counter = 0;
-  int label = counter++;
+  void fornext (void);
+
+  if (++sp >= MAXSTACK) {
+    die ("stack overflow in parser");
+  }
+
+  label[sp] = counter;
+  counter += 2;
+
   /* Match "FOR" */
   match ('f');
   /* Match variable */
@@ -488,27 +504,79 @@ void loop (void)
   expression ();
   /* Initialize counter to lower bound */
   printf ("\tmov\t%s, %%rax\n", id);
-  /* Match "TO" */
-  match ('o');
-  /* Match upper bound */
+
+  /* Evaluate TO clause */
+  match (TO);
   expression ();
   printf ("\tpush\t%%rax\n");
-  printf ("\tjmp\tT%d\n", label);
-  printf ("N%d:\n", label);
-  block ();
-  /* Match "NEXT" */
+
+  /* Evaluate STEP clause */
+  if (tokentype == STEP) {
+    match (STEP);
+    expression();
+  }
+  else {
+    printf ("\tmov\t%%rax, 1\n");
+  }
+  printf ("\tpush\t%%rax\n");
+
+  /* Push direction */
+  printf ("\ttest\t%%rax, %%rax\n");
+  printf ("\tmov\t%%rcx, 1\n");
+  printf ("\tcmovg\t%%rax, %%rcx\n");
+  printf ("\tmov\t%%rcx, -1\n");
+  printf ("\tcmovl\t%%rax, %%rcx\n");
+  printf ("\tpush\t%%rax\n");
+
+  /* Jump to loop test */
+  printf ("\tjmp\tG%d\n", label[sp]);
+  printf ("G%d:\n", label[sp]+1);
+}
+
+
+#define RAX "%%rax"
+#define RCX "%%rcx"
+
+#define MOV(DEST,SRC) "\tmov\t"DEST", "SRC"\n"
+#define CMOVG(DEST,SRC) "\tcmovg\t"DEST", "SRC"\n"
+#define CMOVE(DEST,SRC) "\tcmove\t"DEST", "SRC"\n"
+#define CMOVL(DEST,SRC) "\tcmovl\t"DEST", "SRC"\n"
+
+/* NEXT handler */
+void	fornext (void)
+{
+  /* Match NEXT */
   match ('n');
-  if (tokentype != 'x' || strcmp (id, tokentext) != 0)
-    syntaxerror ();
-  match ('x');
-  printf ("\tmov\t%%rax, %s\n", id);
-  printf ("\tadd\t%%rax, 1\n");
-  printf ("\tmov\t%s, %%rax\n", id);
-  printf ("T%d:\n", label);
-  printf ("\tmov\t%%rax, %s\n", id);
-  printf ("\tcmp\t%%rax, [%%rsp]\n");
-  printf ("\tjl\tN%d\n", label);
-  printf ("\tadd\t%%rsp, %d\n", INTSIZE);
+
+  /* Parse variable 
+  if (tokentype != 'x') || strcmp (id, tokentext) != 0)
+    syntaxerror ();*/
+  //match ('x');
+  char *id = identifier ();
+
+  /* Add step value */
+  printf ("\tmov\t%%rax, QWORD PTR [%%rsp+8]\n");
+  printf ("\tadd\t%s, %%rax\n", id);
+  
+  /* Compare with TO */
+  printf ("G%d:\n", label[sp]);
+  printf ("\tmov\t%%rax, QWORD PTR [%%rsp+16]\n");
+  printf ("\tcmp\t%s, %%rax\n", id);
+  printf (MOV	(RCX, "1"));
+  printf (CMOVG	(RAX, RCX));
+  printf (MOV	(RCX, "0"));
+  printf (CMOVE	(RAX, RCX));
+  printf (MOV	(RCX, "-1"));
+  printf (CMOVL	(RAX, RCX));
+
+  /* Compare result with direction */
+  printf ("\tcmp\t%%rax, QWORD PTR [%%rsp]\n");
+  printf ("\tjnz\tG%d\n", label[sp] + 1);
+
+  /* Clear stack */
+  printf ("\tadd\t%%rsp, 24\n");
+
+  sp = sp - 1;
 }
 
 /* Match a variable reference. */
@@ -589,7 +657,7 @@ void statement (void)
       /* GOTO  */ case 'g': branch (); break;
       /* IF    */ case 'i': conditional (); break;
       /* FOR   */ case 'f': loop (); break;
-      /* NEXT  */ case 'n': break;
+      /* NEXT  */ case 'n': fornext (); break;
       /* PRINT */ case 'p': print (); break;
       /* INPUT */ case 'r': input (); break;
       /* DIM   */ case 'd': dim (); break;
@@ -664,8 +732,8 @@ tokenize (void)
 /* Main program. */
 int main (int argc, char *argv[])
 {
-  for (;;)
-    tokenize();
+  //for (;;)
+    //tokenize();
   init ();
   prologue ();
   block ();

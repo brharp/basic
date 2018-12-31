@@ -1,0 +1,4 @@
+10 FOR X = 1 TO 10
+20 PRINT X
+30 NEXT X
+
