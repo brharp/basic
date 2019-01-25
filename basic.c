@@ -56,6 +56,15 @@ int  ln; /* Line number */
 
 /* Code generators */
 
+void emit(const char *fmt, ...) {
+	va_list ap;
+	putchar('\t');
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+	putchar('\n');
+}
+
 void aload (const char *array, const int index)
 {
   printf (ALOAD ("%1$s", "%2$d"), array, index);
@@ -263,7 +272,7 @@ void expression (void)
   term ();
   while (tokentype == '+' || tokentype == '-')
     {
-      printf ("\tpush\t%%rax\n");
+      printf ("\tpush\t%%rax\n");//put(push, rax)
       switch (tokentype)
         {
           case '+':
