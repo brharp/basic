@@ -7,6 +7,9 @@
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
+
+#include "out.h"
 
 #define TOKENMAX 80
 #define INTSIZE 8
@@ -47,6 +50,11 @@ int  tokentype;
 char tokentext[TOKENMAX+1];
 int  tokenlength;
 int  ln; /* Line number */
+
+/* Registers */
+
+const char *rax = "%rax", *rbx = "%rbx", *rcx = "%rcx", *rdx = "%rdx",
+  *al = "%al", *rbp = "%rbp", *rsp = "%rsp";
 
 /* Code Templates */
 
@@ -487,22 +495,23 @@ void branch (void)
 }
 
 
-#define MAXSTACK 8
-static int counter = 0;
-static int label[MAXSTACK];
-static int sp = -1;
 
 /* Parse and translate a (FOR) loop. */
-void loop (void)
+int
+loop (void)
 {
-  void fornext (void);
+  const char *limit = "QWORD PTR [%rbp-8]";
+  const char *step  = "QWORD PTR [%rbp-16]";
+  const char *dir   = "QWORD PTR [%rbp-24]";
+  static int counter = 0;
 
-  if (++sp >= MAXSTACK) {
-    die ("stack overflow in parser");
-  }
-
-  label[sp] = counter;
+  int label = counter;
   counter += 2;
+
+  /* Create stack space. */
+  emit ("push %s", rbp);
+  emit ("mov %s, %s", rbp, rsp);
+  emit ("sub %s, 24", rsp);
 
   /* Match "FOR" */
   match ('f');
@@ -512,12 +521,12 @@ void loop (void)
   /* Match lower bound */
   expression ();
   /* Initialize counter to lower bound */
-  printf ("\tmov\t%s, %%rax\n", id);
+  emit ("mov %s, %s", id, rax);
 
   /* Evaluate TO clause */
   match (TO);
   expression ();
-  printf ("\tpush\t%%rax\n");
+  emit ("mov %s, %s", limit, rax);
 
   /* Evaluate STEP clause */
   if (tokentype == STEP) {
@@ -525,35 +534,39 @@ void loop (void)
     expression();
   }
   else {
-    printf ("\tmov\t%%rax, 1\n");
+    emit ("mov %s, %d", rax, 1);
   }
-  printf ("\tpush\t%%rax\n");
+
+  /* Store step value */
+  emit ("mov %s, %s", step, rax);
 
   /* Push direction */
-  printf ("\ttest\t%%rax, %%rax\n");
-  printf ("\tmov\t%%rcx, 1\n");
-  printf ("\tcmovg\t%%rax, %%rcx\n");
-  printf ("\tmov\t%%rcx, -1\n");
-  printf ("\tcmovl\t%%rax, %%rcx\n");
-  printf ("\tpush\t%%rax\n");
+  emit ("mov %s, %s", rax, id);
+  emit ("cmp %s, %s", rax, limit);
+  emit ("setg %s", al);
+  emit ("movzx %s, %s", rdx, al);
+  emit ("setl %s", al);
+  emit ("movzx %s, %s", rax, al);
 
-  /* Jump to loop test */
-  printf ("\tjmp\tG%d\n", label[sp]);
-  printf ("G%d:\n", label[sp]+1);
+  emit ("sub %s, %s", rdx, rax);
+  emit ("mov %s, %s", dir, rdx);
+
+  /* Start of loop body */
+  printf ("G%d:\n", label);
+
+  return label;
 }
 
 
-#define RAX "%%rax"
-#define RCX "%%rcx"
-
-#define MOV(DEST,SRC) "\tmov\t"DEST", "SRC"\n"
-#define CMOVG(DEST,SRC) "\tcmovg\t"DEST", "SRC"\n"
-#define CMOVE(DEST,SRC) "\tcmove\t"DEST", "SRC"\n"
-#define CMOVL(DEST,SRC) "\tcmovl\t"DEST", "SRC"\n"
 
 /* NEXT handler */
-void	fornext (void)
+//TODO: add label argument
+void	fornext (int label)
 {
+  const char *limit = "QWORD PTR [%rbp+8]";
+  const char *step  = "QWORD PTR [%rbp+16]";
+  const char *dir   = "QWORD PTR [%rbp+24]";
+
   /* Match NEXT */
   match ('n');
 
@@ -564,28 +577,26 @@ void	fornext (void)
   char *id = identifier ();
 
   /* Add step value */
-  printf ("\tmov\t%%rax, QWORD PTR [%%rsp+8]\n");
-  printf ("\tadd\t%s, %%rax\n", id);
+  emit ("mov %s, %s", rax, id);
+  emit ("add %s, %s", rax, step);
+  emit ("mov %s, %s", id, rax);
   
   /* Compare with TO */
-  printf ("G%d:\n", label[sp]);
-  printf ("\tmov\t%%rax, QWORD PTR [%%rsp+16]\n");
-  printf ("\tcmp\t%s, %%rax\n", id);
-  printf (MOV	(RCX, "1"));
-  printf (CMOVG	(RAX, RCX));
-  printf (MOV	(RCX, "0"));
-  printf (CMOVE	(RAX, RCX));
-  printf (MOV	(RCX, "-1"));
-  printf (CMOVL	(RAX, RCX));
+  emit ("cmp %s, %s", rax, limit);
+  emit ("setg %s", al);
+  emit ("movzx %s, %s", rdx, al);
+  emit ("setl %s", al);
+  emit ("movzx %s, %s", rax, al);
+  emit ("sub %s, %s", rdx, rax);
+  emit ("mov %s, %s", rax, rdx);
+  emit ("sub %s, %s", rax, dir);
 
-  /* Compare result with direction */
-  printf ("\tcmp\t%%rax, QWORD PTR [%%rsp]\n");
-  printf ("\tjnz\tG%d\n", label[sp] + 1);
+  /* Next loop. */
+  emit ("jnz G%d", label);
 
   /* Clear stack */
-  printf ("\tadd\t%%rsp, 24\n");
-
-  sp = sp - 1;
+  emit ("mov %s, %s", rsp, rbp);
+  emit ("pop %s", rbp);
 }
 
 /* Match a variable reference. */
@@ -653,9 +664,14 @@ void print (void)
     }
 }
 
+#define MAXSTACK 16
+
 /* Parse and translate a statement. */
 void statement (void)
 {
+  static int labels[MAXSTACK];
+  static int sp = 0;
+
   /* Statements may begin with a line number. */
   if (tokentype == '#')
     /* Match line number. */
@@ -665,8 +681,18 @@ void statement (void)
     {
       /* GOTO  */ case 'g': branch (); break;
       /* IF    */ case 'i': conditional (); break;
-      /* FOR   */ case 'f': loop (); break;
-      /* NEXT  */ case 'n': fornext (); break;
+      /* FOR   */
+      case 'f':
+        if (sp > MAXSTACK)
+          die ("stack overflow in parser");
+        labels[sp++] = loop ();
+        break;
+      /* NEXT  */
+      case 'n':
+        if (sp < 1)
+          die ("stack underflow in parser");
+        fornext (labels[--sp]);
+        break;
       /* PRINT */ case 'p': print (); break;
       /* INPUT */ case 'r': input (); break;
       /* DIM   */ case 'd': dim (); break;

@@ -41,13 +41,25 @@ L140:
 	jmp	L100
 J100:
 L150:
+	push %rbp
+	mov %rbp, %rsp
+	sub %rsp, 24
 	.comm	Y, 8
 	mov	%rax, 1
-	mov	Y, %rax
+	mov Y, %rax
 	mov	%rax, 10
-	push	%rax
-	jmp	T0
-N0:
+	mov [%rbp-8], %rax
+	mov %rax, 1
+	mov [%rbp-16], %rax
+	mov %rax, Y
+	cmp %rax, [%rbp-8]
+	setg %al
+	movzx %rdx, %al
+	setl %al
+	movzx %rax, %al
+	sub %rdx, %rax
+	mov [%rbp-24], %rdx
+G0:
 L160:
 	.comm	Z, 8
 	mov	%rax, Z
@@ -57,14 +69,20 @@ L160:
 	add	%rax, %rdx
 	mov	Z, %rax
 L170:
-	mov	%rax, Y
-	add	%rax, 1
-	mov	Y, %rax
-T0:
-	mov	%rax, Y
-	cmp	%rax, [%rsp]
-	jl	N0
-	add	%rsp, 8
+	mov %rax, Y
+	add %rax, [%rbp+16]
+	mov Y, %rax
+	cmp %rax, [%rbp+8]
+	setg %al
+	movzx %rdx, %al
+	setl %al
+	movzx %rax, %al
+	sub %rdx, %rax
+	mov %rax, %rdx
+	sub %rax, [%rbp+24]
+	jnz G0
+	mov %rsp, %rbp
+	pop %rbp
 	mov	%eax, 0
 	leave
 	ret

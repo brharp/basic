@@ -23,7 +23,7 @@ tags: $(SOURCES)
 	ctags $(SOURCES)
 
 clean:
-	rm -f $(OBJECTS) $(EXECUTABLE)
+	rm -f *.s $(OBJECTS) $(EXECUTABLE)
 
 test:
 	./runtests

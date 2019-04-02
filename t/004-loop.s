@@ -7,39 +7,43 @@ main:
 	mov	DWORD PTR [%rbp-4], %edi
 	mov	QWORD PTR [%rbp-16], %rsi
 L10:
+	push %rbp
+	mov %rbp, %rsp
+	sub %rsp, 24
 	.comm	X, 8
 	mov	%rax, 1
-	mov	X, %rax
+	mov X, %rax
 	mov	%rax, 10
-	push	%rax
-	mov	%rax, 1
-	push	%rax
-	test	%rax, %rax
-	mov	%rcx, 1
-	cmovg	%rax, %rcx
-	mov	%rcx, -1
-	cmovl	%rax, %rcx
-	push	%rax
-	jmp	G0
-G1:
+	mov QWORD PTR [%rbp-8], %rax
+	mov %rax, 1
+	mov QWORD PTR [%rbp-16], %rax
+	mov %rax, X
+	cmp %rax, QWORD PTR [%rbp-8]
+	setg %al
+	movzx %rdx, %al
+	setl %al
+	movzx %rax, %al
+	sub %rdx, %rax
+	mov QWORD PTR [%rbp-24], %rdx
+G0:
 L20:
 	mov	%rax, X
 	call	print
 L30:
-	mov	%rax, QWORD PTR [%rsp+8]
-	add	X, %rax
-G0:
-	mov	%rax, QWORD PTR [%rsp+16]
-	cmp	X, %rax
-	mov	%rcx, 1
-	cmovg	%rax, %rcx
-	mov	%rcx, 0
-	cmove	%rax, %rcx
-	mov	%rcx, -1
-	cmovl	%rax, %rcx
-	cmp	%rax, QWORD PTR [%rsp]
-	jnz	G1
-	add	%rsp, 24
+	mov %rax, X
+	add %rax, QWORD PTR [%rbp+16]
+	mov X, %rax
+	cmp %rax, QWORD PTR [%rbp+8]
+	setg %al
+	movzx %rdx, %al
+	setl %al
+	movzx %rax, %al
+	sub %rdx, %rax
+	mov %rax, %rdx
+	sub %rax, QWORD PTR [%rbp+24]
+	jnz G0
+	mov %rsp, %rbp
+	pop %rbp
 	mov	%eax, 0
 	leave
 	ret
