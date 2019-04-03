@@ -26,7 +26,7 @@ i: interp.s
 clean:
 	rm -f *.o
 
-test:
+check:
 	$(MAKE) -C t test
 
 run:

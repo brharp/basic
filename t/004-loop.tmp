@@ -17,8 +17,8 @@ L10:
 	mov QWORD PTR [%rbp-8], %rax
 	mov %rax, 1
 	mov QWORD PTR [%rbp-16], %rax
-	mov %rax, X
-	cmp %rax, QWORD PTR [%rbp-8]
+	mov %rax, QWORD PTR [%rbp-8]
+	cmp %rax, X
 	setg %al
 	movzx %rdx, %al
 	setl %al
@@ -31,16 +31,16 @@ L20:
 	call	print
 L30:
 	mov %rax, X
-	add %rax, QWORD PTR [%rbp+16]
+	add %rax, QWORD PTR [%rbp-16]
 	mov X, %rax
-	cmp %rax, QWORD PTR [%rbp+8]
+	cmp %rax, QWORD PTR [%rbp-8]
 	setg %al
 	movzx %rdx, %al
 	setl %al
 	movzx %rax, %al
 	sub %rdx, %rax
 	mov %rax, %rdx
-	sub %rax, QWORD PTR [%rbp+24]
+	sub %rax, QWORD PTR [%rbp-24]
 	jnz G0
 	mov %rsp, %rbp
 	pop %rbp

@@ -495,14 +495,14 @@ void branch (void)
 }
 
 
+const char *limit = "QWORD PTR [%rbp-8]";
+const char *step  = "QWORD PTR [%rbp-16]";
+const char *dir   = "QWORD PTR [%rbp-24]";
 
 /* Parse and translate a (FOR) loop. */
 int
 loop (void)
 {
-  const char *limit = "QWORD PTR [%rbp-8]";
-  const char *step  = "QWORD PTR [%rbp-16]";
-  const char *dir   = "QWORD PTR [%rbp-24]";
   static int counter = 0;
 
   int label = counter;
@@ -541,8 +541,8 @@ loop (void)
   emit ("mov %s, %s", step, rax);
 
   /* Push direction */
-  emit ("mov %s, %s", rax, id);
-  emit ("cmp %s, %s", rax, limit);
+  emit ("mov %s, %s", rax, limit);
+  emit ("cmp %s, %s", rax, id);
   emit ("setg %s", al);
   emit ("movzx %s, %s", rdx, al);
   emit ("setl %s", al);
@@ -563,10 +563,6 @@ loop (void)
 //TODO: add label argument
 void	fornext (int label)
 {
-  const char *limit = "QWORD PTR [%rbp+8]";
-  const char *step  = "QWORD PTR [%rbp+16]";
-  const char *dir   = "QWORD PTR [%rbp+24]";
-
   /* Match NEXT */
   match ('n');
 
