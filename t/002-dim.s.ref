@@ -1,4 +1,3 @@
-?REDIM'D ARRAY IN 20
 	.intel_syntax
 	.globl main
 main:

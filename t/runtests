@@ -1,12 +1,26 @@
 #!/bin/sh
 
-for test in *.in
+for test in *.bas
   do
-    tname=$(basename $test .in)
-    ../basic < $tname.in > $tname.tmp 2>&1
-    ../basic < $tname.in > $tname.s 2>&1
+    tname=$(basename $test .bas)
+    ../basic < $tname.bas > $tname.s 2> $tname.log
     gcc -g $tname.s ../lib/*.o -o $tname.exe
     echo " ****** $tname ****** "
-    diff $tname.out $tname.tmp
+
+    # Check compiler output
+    diff $tname.s $tname.s.ref
+
+    # Check compiler log messages
+    if [ -f $tname.log.ref ]
+      then
+        diff $tname.log $tname.log.ref
+      fi
+
+    # Check program output
+    if [ -x $tname.exe -a -f $tname.out.ref ]
+      then
+        ./$tname.exe > $tname.out
+        diff $tname.out $tname.out.ref
+      fi 
   done
 

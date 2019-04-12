@@ -4,66 +4,15 @@
 #include <assert.h>
 #include <string.h>
 
-
-/*	Base keyword code. */
-
-enum 	keyword
-{
-	END = 128,
-	FOR,
-	NEXT,
-	DATA,
-	INPUT,
-	DIM,
-	READ,
-	LET,
-	GOTO,
-	RUN,
-	IF,
-	RESTORE,
-	GOSUB,
-	RETURN,
-	REM,
-	STOP,
-	PRINT,
-	LIST,
-	CLEAR,
-	NEW,
-	TAB,
-	TO,
-	THEN,
-	STEP
-};
-
+#include "token.h"
 
 /* Keywords. */
 
 const char 	*kw[] = 
 {
-	"END",
-	"FOR",
-	"NEXT",
-	"DATA",
-	"INPUT",
-	"DIM",
-	"READ",
-	"LET",
-	"GOTO",
-	"RUN",
-	"IF",
-	"RESTORE",
-	"GOSUB",
-	"RETURN",
-	"REM",
-	"STOP",
-	"PRINT",
-	"LIST",
-	"CLEAR",
-	"NEW",
-	"TAB(",
-	"TO",
-	"THEN",
-	"STEP",
+	"END", "FOR", "NEXT", "DATA", "INPUT", "DIM", "READ", "LET", "GOTO",
+	"RUN", "IF", "RESTORE", "GOSUB", "RETURN", "REM", "STOP", "PRINT", "LIST",
+	"CLEAR", "NEW", "TAB(", "TO", "THEN", "STEP",
 };
 
 
@@ -72,7 +21,7 @@ const char 	*kw[] =
 const int	nkw = sizeof( kw ) / sizeof( kw[0] );
 
 
-int getchr()
+int	getchr()
 {
 	static int pos = 0, cnt = 0;
 	static char buf[80];
