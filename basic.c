@@ -228,7 +228,8 @@ void linenumber (void)
 
 void factor (void)
 {
-  if (tokentype == 'x')
+  int c = peek();
+  if (isalpha(c))
     {
       char *x = intern (tokentext);
       match ('x');
@@ -245,8 +246,10 @@ void factor (void)
           load (x);
         }
     }
-  else
+  else if (isdigit(chr))
     {
+      double value = number();
+      emit ("mov %s, %f", rax, value);
       printf ("\tmov\t%%rax, %s\n", tokentext);
       match ('#');
     }
@@ -560,7 +563,6 @@ loop (void)
 
 
 /* NEXT handler */
-//TODO: add label argument
 void	fornext (int label)
 {
   /* Match NEXT */
