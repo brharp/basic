@@ -1,0 +1,16 @@
+
+
+regsplit() {
+	const Match m = RegexMatch(rc, sourceLine);
+	return substringmatches(
+		substring(source, tokenstart(m), tokenlength(m)),
+		regsplit(substring(source, tokenend(m), stringlength(s) - tokenend(m)))
+	);
+}
+
+getline() {
+	tokens = tokenize(inputline());
+
+	
+}
+

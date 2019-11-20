@@ -650,6 +650,38 @@ void tokenize(void)
   }
 }
 
+void parse()
+{
+	int sp = MAXSTACK;
+
+	label = digits(); // read line label / number
+	stype = keyword(); // read a keyword
+
+	while (getline(s))
+	{
+		p = s;
+		for () 
+			put(get());
+
+		if (token == IF)
+			ifcode();
+		else if (token == FOR)
+		{
+			if (--sp < 0)
+				error("stack overflow in parser");
+			label[sp] = forcode();
+		}
+		else if (token == NEXT)
+		{
+			if (sp == MAXSTACK)
+				error("NEXT without FOR");
+			nextcode(label[sp++]);
+		}
+		else if (token == LET)
+			letcode();
+	}
+}
+
 /* Main program. */
 int main(int argc, char *argv[])
 {

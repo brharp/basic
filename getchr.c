@@ -19,7 +19,7 @@ const char 	*kw[] =
 {
 	"END", "FOR", "NEXT", "DATA", "INPUT", "DIM", "READ", "LET", "GOTO",
 	"RUN", "IF", "RESTORE", "GOSUB", "RETURN", "REM", "STOP", "PRINT", "LIST",
-	"CLEAR", "NEW", "TAB(", "TO", "THEN", "STEP",
+	"CLEAR", "NEW", "TAB(", "TO", "THEN", "STEP", NULL,
 };
 
 
@@ -45,10 +45,12 @@ char	str[4096];
 /* Numeric value */
 float	val;
 
+
+
 /* Reads next character or keyword. */
 int	getchr()
 {
-	static int pos = 0, cnt = 0, qmode = 0;
+	static int pos = 0, cnt = 0;
 	static char buf[80];
 	int i, j, k;
 
@@ -57,15 +59,6 @@ int	getchr()
 			return EOF;
 		cnt = strlen (buf);
 		pos = 0;
-	}
-
-	if (buf[pos] == QUOTE) {
-		qmode = !qmode;
-		return buf[pos++];
-	}
-
-	if (qmode) {
-		return buf[pos++];
 	}
 
 	for (k = 0; k < nkw; k++) {
@@ -83,7 +76,6 @@ int	getchr()
 
 	return buf[pos++];
 }
-
 
 /* Reads an identifier. */
 void	ident (void)
