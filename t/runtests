@@ -4,7 +4,7 @@ for test in *.bas
   do
     tname=$(basename $test .bas)
     ../basic < $tname.bas > $tname.s 2> $tname.log
-    gcc -g $tname.s ../lib/*.o -o $tname.exe
+    gcc -g -no-pie $tname.s ../lib/*.o -o $tname.exe
     echo " ****** $tname ****** "
 
     # Check compiler output
