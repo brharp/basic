@@ -1,6 +1,6 @@
 
 CC=gcc
-CFLAGS=-c -Wall -g
+CFLAGS=-c -Wall -g 
 LDFLAGS=
 SOURCES=basic.c
 OBJECTS=$(SOURCES:.c=.o)

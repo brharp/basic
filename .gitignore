@@ -1,0 +1,4 @@
+basic
+*.o
+t/*.exe
+lib/*.o
